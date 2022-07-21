@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "long-dep"
+version = "0.1.0"
+description = ""
+authors = ["Ondřej Cífka <cifkao@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+transformers = {extras = ["torch"], version = "^4.20.1"}
+datasets = "^2.3.2"
+conllu = "^4.5.1"
+pandas = "^1.4.3"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
