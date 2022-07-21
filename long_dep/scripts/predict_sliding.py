@@ -31,6 +31,7 @@ def main():
     parser.add_argument("--num-proc", type=int, default=16)
     parser.add_argument("--total-shards", type=int, default=1)
     parser.add_argument("--shard-id", type=int, default=0)
+    parser.add_argument("--out-dtype", type=np.dtype, default=np.float16)
     args = parser.parse_args()
 
     # Prepare the data
@@ -71,7 +72,7 @@ def main():
 
     # Save the predictions
     out_path = f"{args.output_path_prefix}-{args.shard_id:05d}-of-{args.total_shards:05d}"
-    np.save(out_path, results.predictions, allow_pickle=False)
+    np.save(out_path, results.predictions.astype(args.out_dtype), allow_pickle=False)
 
 
 if __name__ == "__main__":
