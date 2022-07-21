@@ -10,6 +10,7 @@ transformers = {extras = ["torch"], version = "^4.20.1"}
 datasets = "^2.3.2"
 conllu = "^4.5.1"
 pandas = "^1.4.3"
+dask = "^2022.7.0"
 
 [tool.poetry.dev-dependencies]
 
