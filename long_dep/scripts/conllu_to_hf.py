@@ -61,7 +61,7 @@ def main():
 
     dataset = collections.defaultdict(list)
     for doc in iter_docs(args.input_path):
-        # Tokenize the document
+        # Re-tokenize the document
         text = "".join(token["form"] + (" " if token["space_after"] else "") for token in doc)
         text = text.rstrip(" ")
         assert BAD_CHAR not in text
@@ -70,7 +70,8 @@ def main():
             dataset[key].append(tokenized[key])
         tokens = tokenizer.convert_ids_to_tokens(tokenized["input_ids"])
 
-        # Map the CoNLL-U annotations to the tokens
+        # Map the CoNLL-U annotations to the new tokens in such a way that every new token gets
+        # the annotations of the first original token that overlaps with it.
         for field in CONLLU_FIELDS:
             dataset[args.feature_prefix + field].append([])
         dataset["sent_id"].append([])
@@ -85,16 +86,21 @@ def main():
                 len_src += len(token_src["form"])
                 continue
 
-            # Some sequences of tokens encode a single character and trying to decode only one of
-            # the tokens will produce a U+FFFD (BAD_CHAR), which would mess up the character
-            # counters. Therefore we need to accumulate tokens until we have a sequence that can
-            # be decoded successfully (with no BAD_CHAR).
+            # Sometimes a single character is encoded as more than one token, and trying to
+            # decode only one of the tokens will produce a U+FFFD (BAD_CHAR), which would mess up
+            # the character counters. Therefore we need to accumulate tokens until we have a
+            # sequence that can be decoded successfully (with no BAD_CHAR).
             tokens_tgt.append(queue_tgt.popleft())
             tokens_tgt_str = tokenizer.convert_tokens_to_string(tokens_tgt)
             if BAD_CHAR not in tokens_tgt_str:
                 len_tgt += len(tokens_tgt_str)
                 tokens_tgt = []
 
+                # Sanity check: the beginning of the new token should overlap with the original token
+                overlap_max_len = len_src - (len_tgt - len(tokens_tgt_str))
+                assert tokens_tgt_str[:overlap_max_len].strip() in token_src["form"]
+
+            # Update the dataset with the aligned annotations
             for field in CONLLU_FIELDS:
                 dataset[args.feature_prefix + field][-1].append(token_src[field])
             dataset["sent_id"][-1].append(token_src["sent_id"])
