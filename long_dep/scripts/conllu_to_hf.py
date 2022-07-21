@@ -103,8 +103,6 @@ def main():
         assert len(set(len(v) for v in dataset.values())) == 1
 
     dataset = datasets.Dataset.from_dict(dataset)
-    print(dataset)
-    print(dataset.data)
     dataset.save_to_disk(args.output_path)
 
 
