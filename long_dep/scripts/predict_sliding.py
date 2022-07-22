@@ -1,4 +1,6 @@
 import argparse
+from pathlib import Path
+import sys
 
 import datasets
 import numpy as np
@@ -32,7 +34,13 @@ def main():
     parser.add_argument("--total-shards", type=int, default=1)
     parser.add_argument("--shard-id", type=int, default=0)
     parser.add_argument("--out-dtype", type=np.dtype, default=np.float16)
+    parser.add_argument("--skip-existing", type=bool, action="store_true")
     args = parser.parse_args()
+
+    out_path = Path(f"{args.output_path_prefix}-{args.shard_id:05d}-of-{args.total_shards:05d}")
+    if args.skip_existing and out_path.exists():
+        print(f"Output file {out_path} exists, exiting.", file=sys.stderr)
+        return
 
     # Prepare the data
     dataset = datasets.Dataset.load_from_disk(args.data_path)
@@ -71,7 +79,6 @@ def main():
     )
 
     # Save the predictions
-    out_path = f"{args.output_path_prefix}-{args.shard_id:05d}-of-{args.total_shards:05d}"
     np.save(out_path, results.predictions.astype(args.out_dtype), allow_pickle=False)
 
 
