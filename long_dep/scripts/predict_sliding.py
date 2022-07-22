@@ -34,7 +34,7 @@ def main():
     parser.add_argument("--total-shards", type=int, default=1)
     parser.add_argument("--shard-id", type=int, default=0)
     parser.add_argument("--out-dtype", type=np.dtype, default=np.float16)
-    parser.add_argument("--skip-existing", type=bool, action="store_true")
+    parser.add_argument("--skip-existing", action="store_true")
     args = parser.parse_args()
 
     out_path = Path(f"{args.output_path_prefix}-{args.shard_id:05d}-of-{args.total_shards:05d}")
