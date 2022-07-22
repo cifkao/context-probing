@@ -88,7 +88,14 @@ def main():
     )
 
     # Save the predictions
-    np.save(out_path, results.predictions.astype(args.out_dtype), allow_pickle=False)
+    try:
+        np.save(out_path, results.predictions.astype(args.out_dtype), allow_pickle=False)
+    except:
+        try:
+            out_path.unlink(missing_ok=True)
+        finally:
+            raise
+    print("Done.", file=sys.stderr)
 
 
 if __name__ == "__main__":
