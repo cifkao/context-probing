@@ -23,6 +23,26 @@ def add_labels(example):
     return example
 
 
+def get_data(path, window_len, num_proc=16):
+    dataset = datasets.Dataset.load_from_disk(path)
+    dataset = dataset.remove_columns(
+        [col for col in dataset.column_names if col not in ["input_ids", "attention_mask"]]
+    )
+    dataset = dataset.map(add_labels, num_proc=num_proc)
+    dataset = dataset.map(
+        get_windows_batched, fn_kwargs=dict(window_len=window_len),
+        batched=True, batch_size=1, num_proc=num_proc
+    )
+    return dataset
+
+
+def get_shard_sizes(dataset, total_shards):
+    return [
+        len(dataset) // total_shards + int(i < len(dataset) % total_shards)
+        for i in range(total_shards)
+    ]
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("data_path", type=str)
@@ -43,24 +63,13 @@ def main():
         return
 
     # Prepare the data
-    dataset = datasets.Dataset.load_from_disk(args.data_path)
-    dataset = dataset.remove_columns(
-        [col for col in dataset.column_names if col not in ["input_ids", "attention_mask"]]
-    )
-    dataset = dataset.map(add_labels, num_proc=args.num_proc)
-    dataset = dataset.map(
-        get_windows_batched, fn_kwargs=dict(window_len=args.window_len),
-        batched=True, batch_size=1, num_proc=args.num_proc
-    )
+    dataset = get_data(args.data_path, args.window_len, num_proc=args.num_proc)
 
     # Figure out which examples belong in this shard
     if args.shard_id not in range(args.total_shards):
         raise ValueError(f"Invalid shard index {args.shard_id}")
     # There are (len(dataset) % total_shards) shards that have 1 extra example
-    shard_sizes = [
-        len(dataset) // args.total_shards + int(i < len(dataset) % args.total_shards)
-        for i in range(args.shard_id + 1)
-    ]
+    shard_sizes = get_shard_sizes(dataset, args.total_shards)[:args.shard_id + 1]
     data_range = range(sum(shard_sizes[:-1]), sum(shard_sizes))
     dataset = dataset.select(data_range)
 
