@@ -52,7 +52,7 @@ def main():
 
     logits = da.concatenate([
         da.from_delayed(
-            dask.delayed(np.load)(path),
+            dask.delayed(np.load)(path, mmap_mode="r"),
             shape=(size, window_len, vocab_size), 
             dtype=dtype_in
         )
