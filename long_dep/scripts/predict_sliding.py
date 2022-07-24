@@ -7,7 +7,7 @@ import numpy as np
 import transformers
 
 
-def get_windows_batched(example, window_len):
+def _get_windows_batched(example, window_len):
     return {
         k: [
             t[i][j : j + window_len]
@@ -18,19 +18,27 @@ def get_windows_batched(example, window_len):
     }
 
 
-def add_labels(example):
+def _add_labels(example):
     example["labels"] = example["input_ids"].copy()
     return example
 
 
-def get_data(path, window_len, num_proc=16):
+def _add_positions(example):
+    example["positions"] = np.arange(len(example["input_ids"]))
+    return example
+
+
+def get_data(path, window_len, columns=None, add_positions=False, num_proc=16):
     dataset = datasets.Dataset.load_from_disk(path)
-    dataset = dataset.remove_columns(
-        [col for col in dataset.column_names if col not in ["input_ids", "attention_mask"]]
-    )
-    dataset = dataset.map(add_labels, num_proc=num_proc)
+    if columns is not None:
+        dataset = dataset.remove_columns(
+            [col for col in dataset.column_names if col not in columns]
+        )
+    dataset = dataset.map(_add_labels, num_proc=num_proc)
+    if add_positions:
+        dataset = dataset.map(_add_positions, num_proc=num_proc)
     dataset = dataset.map(
-        get_windows_batched, fn_kwargs=dict(window_len=window_len),
+        _get_windows_batched, fn_kwargs=dict(window_len=window_len),
         batched=True, batch_size=1, num_proc=num_proc
     )
     return dataset
@@ -63,7 +71,12 @@ def main():
         return
 
     # Prepare the data
-    dataset = get_data(args.data_path, args.window_len, num_proc=args.num_proc)
+    dataset = get_data(
+        args.data_path,
+        columns=["input_ids", "attention_mask"],
+        window_len=args.window_len,
+        num_proc=args.num_proc
+    )
 
     # Figure out which examples belong in this shard
     if args.shard_id not in range(args.total_shards):
