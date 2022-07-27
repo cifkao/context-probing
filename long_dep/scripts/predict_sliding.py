@@ -28,7 +28,14 @@ def _add_positions(example):
     return example
 
 
-def get_data(path, window_len, columns=None, add_positions=False, num_proc=16):
+def _add_seq_ids(example, idx):
+    example["seq_id"] = [idx] * len(example["input_ids"])
+    return example
+
+
+def get_data(
+    path, window_len, columns=None, add_positions=False, add_seq_ids=False, num_proc=16
+):
     dataset = datasets.Dataset.load_from_disk(path)
     if columns is not None:
         dataset = dataset.remove_columns(
@@ -37,6 +44,8 @@ def get_data(path, window_len, columns=None, add_positions=False, num_proc=16):
     dataset = dataset.map(_add_labels, num_proc=num_proc)
     if add_positions:
         dataset = dataset.map(_add_positions, num_proc=num_proc)
+    if add_seq_ids:
+        dataset = dataset.map(_add_seq_ids, num_proc=num_proc, with_indices=True)
     dataset = dataset.map(
         _get_windows_batched, fn_kwargs=dict(window_len=window_len),
         batched=True, batch_size=1, num_proc=num_proc
