@@ -7,14 +7,18 @@ import numpy as np
 import transformers
 
 
-def _get_windows_batched(example, window_len):
+def _get_windows_batched(examples, window_len, pad_id):
     return {
         k: [
-            t[i][j : j + window_len]
-            for i in range(len(example["input_ids"]))
-            for j in range(len(example["input_ids"][0]) - window_len + 1)
+            t[i][j : j + window_len] + [
+                pad_id if k == "input_ids" else
+                0 if type(t[i][0]) == int else
+                None
+            ] * (j + window_len - len(t[i]))
+            for i in range(len(examples["input_ids"]))
+            for j in range(len(examples["input_ids"][i]) - 1)
         ]
-        for k, t in example.items()
+        for k, t in examples.items()
     }
 
 
@@ -34,7 +38,7 @@ def _add_seq_ids(example, idx):
 
 
 def get_data(
-    path, window_len, columns=None, add_positions=False, add_seq_ids=False, num_proc=16
+    path, window_len, pad_id, columns=None, add_positions=False, add_seq_ids=False, num_proc=16
 ):
     dataset = datasets.Dataset.load_from_disk(path)
     if columns is not None:
@@ -47,7 +51,7 @@ def get_data(
     if add_seq_ids:
         dataset = dataset.map(_add_seq_ids, num_proc=num_proc, with_indices=True)
     dataset = dataset.map(
-        _get_windows_batched, fn_kwargs=dict(window_len=window_len),
+        _get_windows_batched, fn_kwargs=dict(window_len=window_len, pad_id=pad_id),
         batched=True, batch_size=1, num_proc=num_proc
     )
     return dataset
@@ -80,11 +84,16 @@ def main():
         return
 
     # Prepare the data
+    tokenizer = transformers.AutoTokenizer.from_pretrained(args.model_path)
     dataset = get_data(
         args.data_path,
         columns=["input_ids", "attention_mask"],
         window_len=args.window_len,
-        num_proc=args.num_proc
+        num_proc=args.num_proc,
+        pad_id=(
+            tokenizer.pad_token_id if tokenizer.pad_token_id is not None
+            else tokenizer.eos_token_id
+        ),
     )
 
     # Figure out which examples belong in this shard
