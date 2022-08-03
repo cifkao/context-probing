@@ -23,6 +23,10 @@ def cross_entropy(logits, labels):
     return xents.reshape(logits.shape[:2])
 
 
+def kl_div(log_q, log_p):
+    return F.kl_div(log_q, log_p, log_target=True, reduction="none").sum(dim=-1)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("data_path", type=str)
@@ -32,7 +36,7 @@ def main():
     args = parser.parse_args()
 
     shard_paths = sorted(glob.glob(args.input_path_pattern))
-    _, window_len, vocab_size = _get_saved_shape(shard_paths[0])
+    _, window_len, _ = _get_saved_shape(shard_paths[0])
     tokenizer = transformers.AutoTokenizer.from_pretrained(args.tokenizer_path)
     pad_id = (
         tokenizer.pad_token_id if tokenizer.pad_token_id is not None
@@ -78,15 +82,11 @@ def main():
 
         # Compute metrics
         metrics["xent"][start_idx:end_idx] = cross_entropy(logits, labels_all[indices])
-        metrics["kl_full"][start_idx:end_idx] = F.kl_div(
-            logprobs,
-            logprobs_full[torch.clamp(indices - window_len + 1, min=0)],
-            log_target=True
+        metrics["kl_full"][start_idx:end_idx] = kl_div(
+            logprobs, logprobs_full[torch.max(0, indices - window_len)]
         )
-        metrics["kl_ctx1"][start_idx:end_idx] = F.kl_div(
-            logprobs_ctx1[indices],
-            logprobs,
-            log_target=True
+        metrics["kl_ctx1"][start_idx:end_idx] = kl_div(
+            logprobs_ctx1[indices], logprobs
         )
 
         # Mask out values that correspond to padding
