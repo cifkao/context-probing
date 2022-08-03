@@ -42,7 +42,7 @@ def main():
         args.data_path,
         window_len=window_len,
         pad_id=pad_id,
-        columns=["input_ids"]
+        columns=["input_ids", "attention_mask"]
     )
 
     labels_all = torch.as_tensor([x[1] for x in dataset["input_ids"]])
@@ -51,8 +51,14 @@ def main():
     logprobs_ctx1, logprobs_full = [], []
     for path in tqdm(shard_paths):
         logits = np.load(path, mmap_mode="r")
-        logprobs_ctx1 = torch.log_softmax(torch.as_tensor(logits[:, [0]]), dim=-1)
-        logprobs_full = torch.log_softmax(torch.as_tensor(logits[:, [-1]]), dim=-1)
+        logprobs_ctx1.append(
+            torch.log_softmax(
+                torch.tensor(logits[:, 0], dtype=torch.float32), dim=-1)
+        )
+        logprobs_full.append(
+            torch.log_softmax(
+                torch.tensor(logits[:, -1], dtype=torch.float32), dim=-1)
+        )
         del logits
     logprobs_ctx1 = torch.cat(logprobs_ctx1)
     logprobs_full = torch.cat(logprobs_full)
@@ -63,7 +69,7 @@ def main():
         for k in ["xent", "kl_full", "kl_ctx1"]
     }
     for path in tqdm(shard_paths):
-        logits = torch.as_tensor(np.load(path, mmap_mode="r")[:, :-1])
+        logits = torch.tensor(np.load(path, mmap_mode="r"), dtype=torch.float32)
         end_idx = start_idx + len(logits)
         logprobs = torch.log_softmax(logits, dim=-1)
 
@@ -74,7 +80,7 @@ def main():
         metrics["xent"][start_idx:end_idx] = cross_entropy(logits, labels_all[indices])
         metrics["kl_full"][start_idx:end_idx] = F.kl_div(
             logprobs,
-            logprobs_full[torch.max(0, indices - window_len)],
+            logprobs_full[torch.clamp(indices - window_len + 1, min=0)],
             log_target=True
         )
         metrics["kl_ctx1"][start_idx:end_idx] = F.kl_div(
