@@ -50,7 +50,7 @@ def main():
     )
 
     labels_all = torch.as_tensor([x[1] for x in dataset["input_ids"]])
-    mask_all = torch.as_tensor([x[1] for x in dataset["attention_mask"]])
+    mask_all = torch.as_tensor([x[1] for x in dataset["attention_mask"]], dtype=bool)
 
     logprobs_ctx1, logprobs_full = [], []
     for path in tqdm(shard_paths):
@@ -69,7 +69,7 @@ def main():
 
     start_idx = 0
     metrics = {
-        k: torch.full((window_len, len(mask_all) + window_len), torch.nan).T
+        k: torch.full((len(mask_all) + window_len, window_len), torch.nan)
         for k in ["xent", "kl_full", "kl_ctx1"]
     }
     for path in tqdm(shard_paths):
@@ -97,11 +97,12 @@ def main():
     
     # "Skew" the results so that they are aligned on token position
     for key in list(metrics.keys()):
-        val = metrics[key].T
+        val = metrics[key].T.contiguous()
         val = val.view(-1)[:-window_len]
-        val = val.view(len(mask_all) + window_len - 1, window_len)
-        assert torch.isnan(val[len(mask_all):]).all()
-        val = val[:len(mask_all)]
+        val = val.view(window_len, len(mask_all) + window_len - 1)
+        if not torch.isnan(val[len(mask_all):]).all():
+            print(f"{key} trailing padding is not NaN:", val[len(mask_all):], file=sys.stderr)
+        val = val[:, :len(mask_all)]
         metrics[key] = val.T
 
     torch.save(metrics, args.output_path)
