@@ -83,7 +83,7 @@ def main():
         # Compute metrics
         metrics["xent"][start_idx:end_idx] = cross_entropy(logits, labels_all[indices])
         metrics["kl_full"][start_idx:end_idx] = kl_div(
-            logprobs, logprobs_full[torch.max(0, indices - window_len)]
+            logprobs, logprobs_full[torch.clamp(indices - window_len + 1, min=0)]
         )
         metrics["kl_ctx1"][start_idx:end_idx] = kl_div(
             logprobs_ctx1[indices], logprobs
