@@ -36,7 +36,7 @@ def main():
     args = parser.parse_args()
 
     shard_paths = sorted(glob.glob(args.input_path_pattern))
-    _, window_len, _ = _get_saved_shape(shard_paths[0])
+    _, window_len, vocab_size = _get_saved_shape(shard_paths[0])
     tokenizer = transformers.AutoTokenizer.from_pretrained(args.tokenizer_path)
     pad_id = (
         tokenizer.pad_token_id if tokenizer.pad_token_id is not None
@@ -49,37 +49,44 @@ def main():
         columns=["input_ids", "attention_mask"]
     )
 
-    labels_all = torch.as_tensor([x[1] for x in dataset["input_ids"]])
-    mask_all = torch.as_tensor([x[1] for x in dataset["attention_mask"]], dtype=bool)
+    labels_all = torch.as_tensor(
+        [x[1] for x in dataset["input_ids"]] + [pad_id] * window_len
+    )
+    mask_all = torch.as_tensor(
+        [x[1] for x in dataset["attention_mask"]] + [0] * window_len,
+        dtype=bool
+    )
 
-    logprobs_ctx1, logprobs_full = [], []
-    for path in tqdm(shard_paths):
-        logits = np.load(path, mmap_mode="r")
-        logprobs_ctx1.append(
-            torch.log_softmax(
-                torch.tensor(logits[:, 0], dtype=torch.float32), dim=-1)
+    def iter_shards(shard_paths):
+        start_idx = 0
+        for path in shard_paths:
+            shard = np.load(path, mmap_mode="r")
+            end_idx = start_idx + len(shard)
+            yield start_idx, end_idx, shard
+            start_idx = end_idx
+
+    logprobs_ctx1 = torch.full((len(mask_all), vocab_size), torch.nan)
+    logprobs_full = torch.full((len(mask_all), vocab_size), torch.nan)
+    for start_idx, end_idx, logits in iter_shards(tqdm(shard_paths)):
+        logprobs_ctx1[start_idx:end_idx] = torch.log_softmax(
+            torch.tensor(logits[:, 0], dtype=torch.float32), dim=-1
         )
-        logprobs_full.append(
-            torch.log_softmax(
-                torch.tensor(logits[:, -1], dtype=torch.float32), dim=-1)
+        logprobs_full[start_idx:end_idx] = torch.log_softmax(
+            torch.tensor(logits[:, -1], dtype=torch.float32), dim=-1
         )
         del logits
-    logprobs_ctx1 = torch.cat(logprobs_ctx1)
-    logprobs_full = torch.cat(logprobs_full)
 
-    start_idx = 0
     metrics = {
-        k: torch.full((len(mask_all) + window_len, window_len), torch.nan)
+        k: torch.full((len(mask_all), window_len), torch.nan)
         for k in ["xent", "kl_full", "kl_ctx1"]
     }
-    for path in tqdm(shard_paths):
-        logits = torch.tensor(np.load(path, mmap_mode="r"), dtype=torch.float32)
-        end_idx = start_idx + len(logits)
+    for start_idx, end_idx, logits in iter_shards(tqdm(shard_paths)):
+        logits = torch.tensor(logits, dtype=torch.float32)
         logprobs = torch.log_softmax(logits, dim=-1)
 
         # Compute the global position of the token each prediction corresponds to
         indices = torch.arange(start_idx, end_idx)[:, None] + torch.arange(window_len)
-
+    
         # Compute metrics
         metrics["xent"][start_idx:end_idx] = cross_entropy(logits, labels_all[indices])
         metrics["kl_full"][start_idx:end_idx] = kl_div(
@@ -88,21 +95,19 @@ def main():
         metrics["kl_ctx1"][start_idx:end_idx] = kl_div(
             logprobs_ctx1[indices], logprobs
         )
-
+    
         # Mask out values that correspond to padding
         for val in metrics.values():
             val[start_idx:end_idx][~mask_all[indices]] = torch.nan
-
-        start_idx = end_idx
     
     # "Skew" the results so that they are aligned on token position
     for key in list(metrics.keys()):
         val = metrics[key].T.contiguous()
         val = val.view(-1)[:-window_len]
-        val = val.view(window_len, len(mask_all) + window_len - 1)
-        if not torch.isnan(val[len(mask_all):]).all():
-            print(f"{key} trailing padding is not NaN:", val[len(mask_all):], file=sys.stderr)
-        val = val[:, :len(mask_all)]
+        val = val.view(window_len, len(mask_all) - 1)
+        if not torch.isnan(val[:, -window_len + 1:]).all():
+            print(f"{key} trailing padding is not NaN:", val[:, -window_len + 1:], file=sys.stderr)
+        val = val[:, :-window_len + 1]
         metrics[key] = val.T
 
     torch.save(metrics, args.output_path)
