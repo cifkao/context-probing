@@ -1,6 +1,6 @@
 import argparse
-import collections
 import glob
+import sys
 
 import numpy as np
 import torch
@@ -33,6 +33,7 @@ def main():
     parser.add_argument("input_path_pattern", type=str)
     parser.add_argument("output_path", type=str)
     parser.add_argument("--tokenizer-path", type=str, required=True)
+    parser.add_argument("--device", type=str, default="cpu")
     args = parser.parse_args()
 
     shard_paths = sorted(glob.glob(args.input_path_pattern))
@@ -50,11 +51,12 @@ def main():
     )
 
     labels_all = torch.as_tensor(
-        [x[1] for x in dataset["input_ids"]] + [pad_id] * window_len
+        [x[1] for x in dataset["input_ids"]] + [pad_id] * window_len,
+        device=args.device
     )
     mask_all = torch.as_tensor(
         [x[1] for x in dataset["attention_mask"]] + [0] * window_len,
-        dtype=bool
+        dtype=bool, device=args.device
     )
 
     def iter_shards(shard_paths):
@@ -65,28 +67,37 @@ def main():
             yield start_idx, end_idx, shard
             start_idx = end_idx
 
-    logprobs_ctx1 = torch.full((len(mask_all), vocab_size), torch.nan)
-    logprobs_full = torch.full((len(mask_all), vocab_size), torch.nan)
+    logprobs_ctx1 = torch.full(
+        (len(mask_all), vocab_size), torch.nan, device=args.device
+    )
+    logprobs_full = torch.full(
+        (len(mask_all), vocab_size), torch.nan, device=args.device
+    )
     for start_idx, end_idx, logits in iter_shards(tqdm(shard_paths)):
         logprobs_ctx1[start_idx:end_idx] = torch.log_softmax(
-            torch.tensor(logits[:, 0], dtype=torch.float32), dim=-1
+            torch.tensor(logits[:, 0], dtype=torch.float32, device=args.device),
+            dim=-1
         )
         logprobs_full[start_idx:end_idx] = torch.log_softmax(
-            torch.tensor(logits[:, -1], dtype=torch.float32), dim=-1
+            torch.tensor(logits[:, -1], dtype=torch.float32, device=args.device),
+            dim=-1
         )
         del logits
 
     metrics = {
-        k: torch.full((len(mask_all), window_len), torch.nan)
+        k: torch.full((len(mask_all), window_len), torch.nan, device=args.device)
         for k in ["xent", "kl_full", "kl_ctx1"]
     }
     for start_idx, end_idx, logits in iter_shards(tqdm(shard_paths)):
-        logits = torch.tensor(logits, dtype=torch.float32)
+        logits = torch.tensor(logits, dtype=torch.float32, device=args.device)
         logprobs = torch.log_softmax(logits, dim=-1)
 
         # Compute the global position of the token each prediction corresponds to
-        indices = torch.arange(start_idx, end_idx)[:, None] + torch.arange(window_len)
-    
+        indices = (
+            torch.arange(start_idx, end_idx, device=args.device)[:, None]
+            + torch.arange(window_len, device=args.device)
+        )
+
         # Compute metrics
         metrics["xent"][start_idx:end_idx] = cross_entropy(logits, labels_all[indices])
         metrics["kl_full"][start_idx:end_idx] = kl_div(
@@ -95,14 +106,14 @@ def main():
         metrics["kl_ctx1"][start_idx:end_idx] = kl_div(
             logprobs_ctx1[indices], logprobs
         )
-    
+
         # Mask out values that correspond to padding
         for val in metrics.values():
             val[start_idx:end_idx][~mask_all[indices]] = torch.nan
     
     # "Skew" the results so that they are aligned on token position
     for key in list(metrics.keys()):
-        val = metrics[key].T.contiguous()
+        val = metrics[key].T.contiguous().cpu()
         val = val.view(-1)[:-window_len]
         val = val.view(window_len, len(mask_all) - 1)
         if not torch.isnan(val[:, -window_len + 1:]).all():
