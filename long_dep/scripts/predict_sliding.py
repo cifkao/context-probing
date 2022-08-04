@@ -38,7 +38,7 @@ def _add_seq_ids(example, idx):
 
 
 def get_data(
-    path, window_len, pad_id, columns=None, add_positions=False, add_seq_ids=False, num_proc=16
+    path, pad_id=-1, window_len=None, columns=None, add_positions=False, add_seq_ids=False, num_proc=16
 ):
     dataset = datasets.Dataset.load_from_disk(path)
     if columns is not None:
@@ -50,10 +50,11 @@ def get_data(
         dataset = dataset.map(_add_positions, num_proc=num_proc)
     if add_seq_ids:
         dataset = dataset.map(_add_seq_ids, num_proc=num_proc, with_indices=True)
-    dataset = dataset.map(
-        _get_windows_batched, fn_kwargs=dict(window_len=window_len, pad_id=pad_id),
-        batched=True, batch_size=1, num_proc=num_proc
-    )
+    if window_len is not None:
+        dataset = dataset.map(
+            _get_windows_batched, fn_kwargs=dict(window_len=window_len, pad_id=pad_id),
+            batched=True, batch_size=1, num_proc=num_proc
+        )
     return dataset
 
 
