@@ -1,5 +1,6 @@
 import argparse
 import glob
+import itertools
 import sys
 
 import numpy as np
@@ -14,6 +15,21 @@ from .predict_sliding import get_data
 def _get_saved_shape(path):
     arr = np.load(path, mmap_mode="r")
     return arr.shape
+
+
+def _get_seq_boundary_indices(seq_lengths):
+    seq_bounds = np.cumsum([0] + list(seq_lengths))
+    seq_start_indices = np.zeros(sum(seq_lengths) + 1, dtype=int)
+    seq_start_indices[seq_bounds[1:]] = seq_lengths
+    seq_start_indices = torch.as_tensor(
+        np.cumsum(seq_start_indices)[:-1], device=seq_lengths.device
+    )
+    seq_end_indices = np.zeros(sum(seq_lengths), dtype=int)
+    seq_end_indices[seq_bounds[:-1]] = seq_lengths
+    seq_end_indices = torch.as_tensor(
+        np.cumsum(seq_end_indices), device=seq_lengths.device
+    )
+    return seq_start_indices, seq_end_indices
 
 
 def cross_entropy(logits, labels):
@@ -47,17 +63,23 @@ def main():
         args.data_path,
         window_len=window_len,
         pad_id=pad_id,
-        columns=["input_ids", "attention_mask"]
+        columns=["input_ids"]
     )
 
     labels_all = torch.as_tensor(
         [x[1] for x in dataset["input_ids"]] + [pad_id] * window_len,
         device=args.device
     )
-    mask_all = torch.as_tensor(
-        [x[1] for x in dataset["attention_mask"]] + [0] * window_len,
-        dtype=bool, device=args.device
+    total_len = len(labels_all)
+
+    # For each position, compute the start and end index of the sequence (document)
+    # it belongs to
+    seq_lengths = torch.as_tensor(
+        [len(s) for s in itertools.groupby(ids[0] for ids in dataset["seq_id"])],
+        device=args.device
     )
+    assert seq_lengths.sum() == total_len
+    seq_start_indices, seq_end_indices = _get_seq_boundary_indices(seq_lengths)
 
     def iter_shards(shard_paths):
         start_idx = 0
@@ -68,10 +90,10 @@ def main():
             start_idx = end_idx
 
     logprobs_ctx1 = torch.full(
-        (len(mask_all), vocab_size), torch.nan, device=args.device
+        (total_len, vocab_size), torch.nan, device=args.device
     )
     logprobs_full = torch.full(
-        (len(mask_all), vocab_size), torch.nan, device=args.device
+        (total_len, vocab_size), torch.nan, device=args.device
     )
     for start_idx, end_idx, logits in iter_shards(tqdm(shard_paths)):
         logprobs_ctx1[start_idx:end_idx] = torch.log_softmax(
@@ -85,7 +107,7 @@ def main():
         del logits
 
     metrics = {
-        k: torch.full((len(mask_all), window_len), torch.nan, device=args.device)
+        k: torch.full((total_len, window_len), torch.nan, device=args.device)
         for k in ["xent", "kl_full", "kl_ctx1"]
     }
     for start_idx, end_idx, logits in iter_shards(tqdm(shard_paths)):
@@ -97,25 +119,30 @@ def main():
             torch.arange(start_idx, end_idx, device=args.device)[:, None]
             + torch.arange(window_len, device=args.device)
         )
+        # Do not let the indices overflow into neighboring sequences
+        indices_clamped = torch.clamp(indices, max=seq_end_indices[:, None])
+        indicess_fullctx_clamped = torch.clamp(
+            indices - window_len + 1,
+            min=seq_start_indices[:, None],
+            max=seq_end_indices[:, None]
+        )
 
         # Compute metrics
-        metrics["xent"][start_idx:end_idx] = cross_entropy(logits, labels_all[indices])
-        metrics["kl_full"][start_idx:end_idx] = kl_div(
-            logprobs, logprobs_full[torch.clamp(indices - window_len + 1, min=0)]
+        metrics["xent"][start_idx:end_idx] = cross_entropy(
+            logits, labels_all[indices_clamped]
         )
         metrics["kl_ctx1"][start_idx:end_idx] = kl_div(
-            logprobs_ctx1[indices], logprobs
+            logprobs_ctx1[indices_clamped], logprobs
+        )
+        metrics["kl_full"][start_idx:end_idx] = kl_div(
+            logprobs, logprobs_full[indicess_fullctx_clamped]
         )
 
-        # Mask out values that correspond to padding
-        for val in metrics.values():
-            val[start_idx:end_idx][~mask_all[indices]] = torch.nan
-    
     # "Skew" the results so that they are aligned on token position
     for key in list(metrics.keys()):
         val = metrics[key].T.contiguous().cpu()
         val = val.view(-1)[:-window_len]
-        val = val.view(window_len, len(mask_all) - 1)
+        val = val.view(window_len, total_len - 1)
         if not torch.isnan(val[:, -window_len + 1:]).all():
             print(f"{key} trailing padding is not NaN:", val[:, -window_len + 1:], file=sys.stderr)
         val = val[:, :-window_len + 1]
