@@ -1,5 +1,6 @@
 data/
 static/data
+.git-dist/
 
 # Logs
 logs
