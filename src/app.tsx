@@ -2,6 +2,8 @@ import ndarray from "ndarray";
 import ndarrayUnpack from "ndarray-unpack";
 import Npyjs from "npyjs";
 import React from "react";
+import Card from "react-bootstrap/Card";
+import Form from "react-bootstrap/Form";
 
 import TOKENS from "../data/en_lines-ud-dev.tokens.json";
 
@@ -10,6 +12,7 @@ const SCORES_URLS = TOKENS.map(
 );
 
 export class App extends React.Component {
+    state = {docIndex: 0};
     scoresPromises: Promise<ndarray.NdArray<number[]>>[];
 
     constructor(props: {}) {
@@ -24,14 +27,23 @@ export class App extends React.Component {
 
     render() {
         return (
-            <div>
-            {
-                TOKENS.map((t, i) => (
-                    <HighlightedText key={i} tokens={t}
-                                     scoresPromise={this.scoresPromises[i]} />
-                ))
-            }
-            </div>
+            <Card>
+                <Card.Header>
+                    <Form.Select onChange={e => this.setState({docIndex: e.target.options.selectedIndex})}>
+                        {
+                            TOKENS.map((tokens, idx) => {
+                                return <option key={idx} value={idx}>
+                                    {[...tokens.slice(0, 20), "…"].join("")}
+                                </option>;
+                            })
+                        }
+                    </Form.Select>
+                </Card.Header>
+                <Card.Body>
+                    <HighlightedText tokens={TOKENS[this.state.docIndex]}
+                                     scoresPromise={this.scoresPromises[this.state.docIndex]} />
+                </Card.Body>
+            </Card>
         );
     }
 }
@@ -47,7 +59,7 @@ type HighlightedTextState = {
 class HighlightedText extends React.Component<HighlightedTextProps, HighlightedTextState> {
     scores?: ndarray.NdArray<number[]>;
 
-    constructor(props: HighlightedTextProps) {
+    constructor(props) {
         super(props);
         (async () => {
             this.scores = await props.scoresPromise;
@@ -73,7 +85,6 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
                     return <span key={i} style={style} onMouseOver={onMouseOver}>{t}</span>;
                 })
             }
-            <hr />
             </div>
         );
     }
