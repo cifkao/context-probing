@@ -3,45 +3,69 @@ import ndarrayUnpack from "ndarray-unpack";
 import Npyjs from "npyjs";
 import React from "react";
 import Card from "react-bootstrap/Card";
+import Col from "react-bootstrap/Col";
+import FloatingLabel from "react-bootstrap/FloatingLabel";
 import Form from "react-bootstrap/Form";
+import Row from "react-bootstrap/Row";
 
 import TOKENS from "../data/en_lines-ud-dev.tokens.json";
 
-const SCORES_URLS = TOKENS.map(
-    (_, i) => `data/gpt-j-6B.en_lines-ud-dev.${("0000" + i).slice(0, 5)}.xentdiff.npy`
-);
+const MODEL_NAMES = ["gpt-j-6B", "gpt2-xl"];
+
+const SCORES_URLS = new Map(MODEL_NAMES.map(modelName =>
+    [
+        modelName,
+        TOKENS.map(
+            (_, i) => `data/${modelName}.en_lines-ud-dev` +
+                      `.${("0000" + i).slice(0, 5)}.xentdiff.npy`
+        )
+    ]
+));
+
+const npyjs = new Npyjs();
 
 export class App extends React.Component {
-    state = {docIndex: 0};
-    scoresPromises: Promise<ndarray.NdArray<number[]>>[];
-
-    constructor(props: {}) {
-        super(props);
-
-        const npyjs = new Npyjs();
-        this.scoresPromises = SCORES_URLS.map(async (url) => {
-            const rawArray = await npyjs.load(url);
-            return ndarray(rawArray.data as number[], rawArray.shape);
-        });
-    }
+    state = {docIndex: 0, model: MODEL_NAMES[0]};
 
     render() {
         return (
             <Card>
                 <Card.Header>
-                    <Form.Select onChange={e => this.setState({docIndex: e.target.options.selectedIndex})}>
-                        {
-                            TOKENS.map((tokens, idx) => {
-                                return <option key={idx} value={idx}>
-                                    {[...tokens.slice(0, 20), "…"].join("")}
-                                </option>;
-                            })
-                        }
-                    </Form.Select>
+                    <Row className="g-2">
+                        <Col md={3}>
+                            <FloatingLabel controlId="modelSelect" label="Model">
+                                <Form.Select key="model"
+                                             onChange={e => this.setState({model: e.target.value})}>
+                                    {
+                                        MODEL_NAMES.map(modelName => 
+                                            <option key={modelName} value={modelName}>
+                                                {modelName}
+                                            </option>
+                                        )
+                                    }
+                                </Form.Select>
+                            </FloatingLabel>
+                        </Col>
+                        <Col md={9}>
+                            <FloatingLabel controlId="docSelect" label="Text">
+                                <Form.Select key="doc"
+                                             onChange={e => this.setState({docIndex: parseInt(e.target.value)})}>
+                                    {
+                                        TOKENS.map((tokens, idx) => 
+                                            <option key={idx} value={idx}>
+                                                {[...tokens.slice(0, 20), "…"].join("")}
+                                            </option>
+                                        )
+                                    }
+                                </Form.Select>
+                            </FloatingLabel>
+                        </Col>
+                    </Row>
                 </Card.Header>
                 <Card.Body>
                     <HighlightedText tokens={TOKENS[this.state.docIndex]}
-                                     scoresPromise={this.scoresPromises[this.state.docIndex]} />
+                                     scoresUrl={SCORES_URLS.get(this.state.model)[this.state.docIndex]}
+                                     key={`${this.state.model}:${this.state.docIndex}`} />
                 </Card.Body>
             </Card>
         );
@@ -50,39 +74,51 @@ export class App extends React.Component {
 
 type HighlightedTextProps = {
     tokens: string[],
-    scoresPromise: Promise<ndarray.NdArray<number[]>>
+    scoresUrl: string
 };
 type HighlightedTextState = {
+    scores?: ndarray.NdArray<number[]>;
     activeIndex: number
 };
 
 class HighlightedText extends React.Component<HighlightedTextProps, HighlightedTextState> {
-    scores?: ndarray.NdArray<number[]>;
+    state = {scores: null, activeIndex: null};
 
     constructor(props) {
         super(props);
         (async () => {
-            this.scores = await props.scoresPromise;
+            const rawArray = await npyjs.load(props.scoresUrl);
+            const scores = ndarray(rawArray.data as number[], rawArray.shape);
+            this.setState({scores});
         })();
     }
 
     render() {
         const scores = this.getScores();
+        let className = "highlighted-text";
+        if (this.state.scores == null) {
+            className += " loading";
+        }
+
         return (
-            <div>
+            <div className={className}>
             {
                 this.props.tokens.map((t, i) => {
+                    let className = "token";
+                    if (this.state && this.state.activeIndex == i) {
+                        className += " active";
+                    }
                     const style = {
                         backgroundColor:
                             scores[i] > 0
                             ? `rgba(255, 32, 32, ${scores[i]})`
-                            : `rgba(32, 255, 32, ${-scores[i]})`,
-                        outline: this.state && this.state.activeIndex == i ? "1px solid black" : null
+                            : `rgba(32, 255, 32, ${-scores[i]})`
                     };
+
                     const onMouseOver = () => {
                         this.setState({activeIndex: i});
                     };
-                    return <span key={i} style={style} onMouseOver={onMouseOver}>{t}</span>;
+                    return <span key={i} className={className} style={style} onMouseOver={onMouseOver}>{t}</span>;
                 })
             }
             </div>
@@ -90,14 +126,14 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
     }
 
     private getScores() {
-        if (!this.scores || !this.state) {
+        if (!this.state || !this.state.scores || this.state.activeIndex == null) {
             return this.props.tokens.map(() => 0);
         }
 
         const i = this.state.activeIndex;
-        const hi = Math.min(Math.max(0, i - 1), this.scores.shape[1]);
+        const hi = Math.min(Math.max(0, i - 1), this.state.scores.shape[1]);
         const row = ndarrayUnpack(
-            this.scores.pick(i).hi(hi).step(-1)
+            this.state.scores.pick(i).hi(hi).step(-1)
         ).map(x => x / 127) as number[];
         let result = [
             ...Array(Math.max(0, i - 1 - row.length)).fill(0), 
