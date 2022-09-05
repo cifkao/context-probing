@@ -10,7 +10,7 @@ import Row from "react-bootstrap/Row";
 
 import TOKENS from "../data/en_lines-ud-dev.tokens.json";
 
-const MODEL_NAMES = ["gpt-j-6B", "gpt2-xl"];
+const MODEL_NAMES = ["gpt-j-6B", "gpt2-xl", "gpt2"];
 
 const SCORES_URLS = new Map(MODEL_NAMES.map(modelName =>
     [
