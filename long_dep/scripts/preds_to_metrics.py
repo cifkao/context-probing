@@ -63,11 +63,12 @@ def main():
         args.data_path,
         window_len=window_len,
         pad_id=pad_id,
+        add_seq_ids=True,
         columns=["input_ids"]
     )
 
     labels_all = torch.as_tensor(
-        [x[1] for x in dataset["input_ids"]] + [pad_id] * window_len,
+        [x[1] for x in dataset["input_ids"]],
         device=args.device
     )
     total_len = len(labels_all)
@@ -75,7 +76,10 @@ def main():
     # For each position, compute the start and end index of the sequence (document)
     # it belongs to
     seq_lengths = torch.as_tensor(
-        [len(s) for s in itertools.groupby(ids[0] for ids in dataset["seq_id"])],
+        [
+            sum(1 for _ in s)
+            for _, s in itertools.groupby(ids[0] for ids in dataset["seq_id"])
+        ],
         device=args.device
     )
     assert seq_lengths.sum() == total_len
@@ -107,7 +111,7 @@ def main():
         del logits
 
     metrics = {
-        k: torch.full((total_len, window_len), torch.nan, device=args.device)
+        k: torch.full((total_len + window_len, window_len), torch.nan, device=args.device)
         for k in ["xent", "kl_full", "kl_ctx1"]
     }
     for start_idx, end_idx, logits in iter_shards(tqdm(shard_paths)):
@@ -120,11 +124,13 @@ def main():
             + torch.arange(window_len, device=args.device)
         )
         # Do not let the indices overflow into neighboring sequences
-        indices_clamped = torch.clamp(indices, max=seq_end_indices[:, None])
-        indicess_fullctx_clamped = torch.clamp(
+        indices_clamped = torch.clamp(
+            indices, max=seq_end_indices[start_idx:end_idx, None] - 1
+        )
+        indices_fullctx_clamped = torch.clamp(
             indices - window_len + 1,
-            min=seq_start_indices[:, None],
-            max=seq_end_indices[:, None]
+            min=seq_start_indices[start_idx:end_idx, None],
+            max=seq_end_indices[start_idx:end_idx, None] - 1
         )
 
         # Compute metrics
@@ -135,14 +141,14 @@ def main():
             logprobs_ctx1[indices_clamped], logprobs
         )
         metrics["kl_full"][start_idx:end_idx] = kl_div(
-            logprobs, logprobs_full[indicess_fullctx_clamped]
+            logprobs, logprobs_full[indices_fullctx_clamped]
         )
 
     # "Skew" the results so that they are aligned on token position
     for key in list(metrics.keys()):
         val = metrics[key].T.contiguous().cpu()
         val = val.view(-1)[:-window_len]
-        val = val.view(window_len, total_len - 1)
+        val = val.view(window_len, total_len + window_len - 1)
         if not torch.isnan(val[:, -window_len + 1:]).all():
             print(f"{key} trailing padding is not NaN:", val[:, -window_len + 1:], file=sys.stderr)
         val = val[:, :-window_len + 1]
