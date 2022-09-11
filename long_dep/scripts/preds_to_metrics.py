@@ -163,7 +163,7 @@ def main():
         val = metrics[key].transpose(0, 1).contiguous().cpu()
         val = val.view(-1, *shape_tail)[:-window_len]
         val = val.view(window_len, total_len + window_len - 1, *shape_tail)
-        if val.dtype.kind == "f" and not torch.isnan(val[:, -window_len + 1:]).all():
+        if val.is_floating_point() and not torch.isnan(val[:, -window_len + 1:]).all():
             print(f"{key} trailing padding is not NaN:", val[:, -window_len + 1:], file=sys.stderr)
         val = val[:, :-window_len + 1]
         metrics[key] = val.transpose(0, 1)
