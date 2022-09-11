@@ -49,6 +49,7 @@ def main():
     parser.add_argument("input_path_pattern", type=str)
     parser.add_argument("output_path", type=str)
     parser.add_argument("--tokenizer-path", type=str, required=True)
+    parser.add_argument("--topk", type=int, default=None)
     parser.add_argument("--device", type=str, default="cpu")
     args = parser.parse_args()
 
@@ -111,9 +112,19 @@ def main():
         del logits
 
     metrics = {
-        k: torch.full((total_len + window_len, window_len), torch.nan, device=args.device)
+        k: torch.full(
+            (total_len + window_len, window_len),
+            torch.nan, device=args.device
+        )
         for k in ["xent", "kl_full", "kl_ctx1"]
     }
+    if args.topk:
+        metrics["topk"] = -torch.ones(
+            (total_len + window_len, window_len, args.topk),
+            dtype=torch.int32, device=args.device
+        )
+        assert vocab_size < torch.iinfo(metrics["topk"].dtype).max
+
     for start_idx, end_idx, logits in iter_shards(tqdm(shard_paths)):
         logits = torch.tensor(logits, dtype=torch.float32, device=args.device)
         logprobs = torch.log_softmax(logits, dim=-1)
@@ -143,16 +154,19 @@ def main():
         metrics["kl_full"][start_idx:end_idx] = kl_div(
             logprobs, logprobs_full[indices_fullctx_clamped]
         )
+        if args.topk:
+            metrics["topk"][start_idx:end_idx] = logits.topk(args.topk).indices
 
     # "Skew" the results so that they are aligned on token position
     for key in list(metrics.keys()):
-        val = metrics[key].T.contiguous().cpu()
-        val = val.view(-1)[:-window_len]
-        val = val.view(window_len, total_len + window_len - 1)
-        if not torch.isnan(val[:, -window_len + 1:]).all():
+        shape_tail = metrics[key].shape[2:]
+        val = metrics[key].transpose(0, 1).contiguous().cpu()
+        val = val.view(-1, *shape_tail)[:-window_len]
+        val = val.view(window_len, total_len + window_len - 1, *shape_tail)
+        if val.dtype.kind == "f" and not torch.isnan(val[:, -window_len + 1:]).all():
             print(f"{key} trailing padding is not NaN:", val[:, -window_len + 1:], file=sys.stderr)
         val = val[:, :-window_len + 1]
-        metrics[key] = val.T
+        metrics[key] = val.transpose(0, 1)
 
     torch.save(metrics, args.output_path)
 
