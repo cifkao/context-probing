@@ -77,12 +77,13 @@ type HighlightedTextProps = {
     scoresUrl: string
 };
 type HighlightedTextState = {
-    scores?: ndarray.NdArray<number[]>;
-    activeIndex: number
+    scores?: ndarray.NdArray<number[]>,
+    activeIndex: number,
+    isFrozen: boolean
 };
 
 class HighlightedText extends React.Component<HighlightedTextProps, HighlightedTextState> {
-    state = {scores: null, activeIndex: null};
+    state = {scores: null, activeIndex: null, isFrozen: false};
 
     constructor(props) {
         super(props);
@@ -100,8 +101,12 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
             className += " loading";
         }
 
+        const onClick = () => {
+            this.setState({isFrozen: false});
+        };
+
         return (
-            <div className={className}>
+            <div className={className} onClick={onClick}>
             {
                 this.props.tokens.map((t, i) => {
                     let className = "token";
@@ -116,9 +121,19 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
                     };
 
                     const onMouseOver = () => {
-                        this.setState({activeIndex: i});
+                        if (!this.state.isFrozen) {
+                            this.setState({activeIndex: i});
+                        }
                     };
-                    return <span key={i} className={className} style={style} onMouseOver={onMouseOver}>{t}</span>;
+                    const onClick = (event: React.MouseEvent) => {
+                        this.setState({isFrozen: !this.state.isFrozen});
+                        event.stopPropagation();
+                        if (this.state.isFrozen) {  // setState is not in effect yet
+                            this.setState({activeIndex: i});
+                        }
+                    };
+                    return <span key={i} className={className} style={style}
+                                 onMouseOver={onMouseOver} onClick={onClick}>{t}</span>;
                 })
             }
             </div>
