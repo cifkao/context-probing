@@ -17,12 +17,28 @@ const SCORES_URLS = new Map(MODEL_NAMES.map(modelName =>
         modelName,
         TOKENS.map(
             (_, i) => `data/${modelName}.en_lines-ud-dev` +
-                      `.${("0000" + i).slice(0, 5)}.xentdiff.npy`
+                      `.${("0000" + i).slice(0, 5)}`
         )
     ]
 ));
 
+const VOCAB_URL = "data/inv_vocab.json";
+let vocab = {};
+
+function getScoresUrl(modelName: string, docIndex: number) {
+    return SCORES_URLS.get(modelName)[docIndex] + ".xentdiff.npy";
+}
+
+function getTopkUrl(modelName: string, docIndex: number) {
+    return SCORES_URLS.get(modelName)[docIndex] + ".topk.npy";
+}
+
 const npyjs = new Npyjs();
+
+async function loadNumpy(url: string) {
+    const rawArray = await npyjs.load(url);
+    return ndarray(rawArray.data as number[], rawArray.shape);
+}
 
 export class App extends React.Component {
     state = {docIndex: 0, model: MODEL_NAMES[0]};
@@ -64,7 +80,8 @@ export class App extends React.Component {
                 </Card.Header>
                 <Card.Body>
                     <HighlightedText tokens={TOKENS[this.state.docIndex]}
-                                     scoresUrl={SCORES_URLS.get(this.state.model)[this.state.docIndex]}
+                                     scoresUrl={getScoresUrl(this.state.model, this.state.docIndex)}
+                                     topkUrl={getTopkUrl(this.state.model, this.state.docIndex)}
                                      key={`${this.state.model}:${this.state.docIndex}`} />
                 </Card.Body>
             </Card>
@@ -74,28 +91,36 @@ export class App extends React.Component {
 
 type HighlightedTextProps = {
     tokens: string[],
-    scoresUrl: string
+    scoresUrl: string,
+    topkUrl: string
 };
 type HighlightedTextState = {
-    scores?: ndarray.NdArray<number[]>,
+    scores: ndarray.NdArray<number[]>,
+    topk: ndarray.NdArray<number[]>,
     activeIndex: number,
+    hoverIndex: number,
     isFrozen: boolean
 };
 
 class HighlightedText extends React.Component<HighlightedTextProps, HighlightedTextState> {
-    state = {scores: null, activeIndex: null, isFrozen: false};
+    state = {scores: null, topk: null, activeIndex: null, hoverIndex: null, isFrozen: false};
 
     constructor(props) {
         super(props);
         (async () => {
-            const rawArray = await npyjs.load(props.scoresUrl);
-            const scores = ndarray(rawArray.data as number[], rawArray.shape);
-            this.setState({scores});
+            const scores = loadNumpy(props.scoresUrl);
+            const topk = loadNumpy(props.topkUrl);
+            if (Object.keys(vocab).length == 0) {
+                Object.assign(vocab, await (await fetch(VOCAB_URL)).json());
+            }
+            this.setState({scores: await scores, topk: await topk});
         })();
     }
 
     render() {
         const scores = this.getScores();
+        const topk = this.getTopk();
+
         let className = "highlighted-text";
         if (this.state.scores == null) {
             className += " loading";
@@ -105,7 +130,7 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
             this.setState({isFrozen: false});
         };
 
-        return (
+        return <>
             <div className={className} onClick={onClick}>
             {
                 this.props.tokens.map((t, i) => {
@@ -124,6 +149,7 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
                         if (!this.state.isFrozen) {
                             this.setState({activeIndex: i});
                         }
+                        this.setState({hoverIndex: i});
                     };
                     const onClick = (event: React.MouseEvent) => {
                         this.setState({isFrozen: !this.state.isFrozen});
@@ -137,7 +163,23 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
                 })
             }
             </div>
-        );
+            <div className="status-bar">
+                <strong>target:</strong>
+                {
+                    this.state.activeIndex != null
+                    ? <span className="token">{this.props.tokens[this.state.activeIndex]}</span>
+                    : <></>
+                }
+                {
+                    this.state.hoverIndex != null && topk[this.state.hoverIndex] != null
+                    ? <>
+                        <strong> top:</strong>
+                        {topk[this.state.hoverIndex].map(token => <span className="token">{token}</span>)}
+                    </>
+                    : <></>
+                }
+            </div>
+        </>;
     }
 
     private getScores() {
@@ -155,6 +197,24 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
             ...row.map((x) => x == undefined || isNaN(x) ? 0 : x)
         ];
         result = [...result, ...Array(this.props.tokens.length - result.length).fill(0)];
+        return result;
+    }
+
+    private getTopk() {
+        if (!this.state || !this.state.topk || this.state.activeIndex == null) {
+            return this.props.tokens.map(() => null);
+        }
+
+        const i = this.state.activeIndex;
+        const hi = Math.min(Math.max(0, i), this.state.topk.shape[1]);
+        const row = ndarrayUnpack(
+            this.state.topk.pick(i).hi(hi).step(-1)
+        ).map(l => l.map(i => vocab[i])) as string[][];
+        let result = [
+            ...Array(Math.max(0, i - row.length)).fill(null),
+            ...row
+        ];
+        result = [...result, ...Array(this.props.tokens.length - result.length).fill(null)];
         return result;
     }
 }
