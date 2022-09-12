@@ -3,6 +3,7 @@ import glob
 import itertools
 import sys
 
+import datasets
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -52,6 +53,8 @@ def main():
     parser.add_argument("--topk", type=int, default=None)
     parser.add_argument("--device", type=str, default="cpu")
     args = parser.parse_args()
+
+    datasets.disable_caching()
 
     shard_paths = sorted(glob.glob(args.input_path_pattern))
     _, window_len, vocab_size = _get_saved_shape(shard_paths[0])

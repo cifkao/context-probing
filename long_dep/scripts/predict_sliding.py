@@ -79,6 +79,8 @@ def main():
     parser.add_argument("--skip-existing", action="store_true")
     args = parser.parse_args()
 
+    datasets.disable_caching()
+
     out_path = Path(f"{args.output_path_prefix}-{args.shard_id:05d}-of-{args.total_shards:05d}")
     if args.skip_existing and out_path.exists():
         print(f"Output file {out_path} exists, exiting.", file=sys.stderr)
