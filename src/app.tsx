@@ -41,7 +41,7 @@ async function loadNumpy(url: string) {
 }
 
 export class App extends React.Component {
-    state = {docIndex: 0, model: MODEL_NAMES[0]};
+    state = {docIndex: 0, model: MODEL_NAMES[0], showTopk: false};
 
     render() {
         return (
@@ -77,12 +77,19 @@ export class App extends React.Component {
                             </FloatingLabel>
                         </Col>
                     </Row>
+                    <Row className="g-2 mt-1">
+                        <Col>
+                            <Form.Check type="switch" id="topkSwitch"
+                                label="Show top predictions (loads 40MB+ of data)"
+                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => this.setState({showTopk: e.target.checked})} />
+                        </Col>
+                    </Row>
                 </Card.Header>
                 <Card.Body>
                     <HighlightedText tokens={TOKENS[this.state.docIndex]}
                                      scoresUrl={getScoresUrl(this.state.model, this.state.docIndex)}
-                                     topkUrl={getTopkUrl(this.state.model, this.state.docIndex)}
-                                     key={`${this.state.model}:${this.state.docIndex}`} />
+                                     topkUrl={this.state.showTopk ? getTopkUrl(this.state.model, this.state.docIndex) : null}
+                                     key={`${this.state.model}:${this.state.docIndex}:${this.state.showTopk}`} />
                 </Card.Body>
             </Card>
         );
@@ -109,8 +116,8 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
         super(props);
         (async () => {
             const scores = loadNumpy(props.scoresUrl);
-            const topk = loadNumpy(props.topkUrl);
-            if (Object.keys(vocab).length == 0) {
+            const topk = props.topkUrl ? loadNumpy(props.topkUrl) : null;
+            if (topk && Object.keys(vocab).length == 0) {
                 Object.assign(vocab, await (await fetch(VOCAB_URL)).json());
             }
             this.setState({scores: await scores, topk: await topk});
@@ -135,8 +142,13 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
             {
                 this.props.tokens.map((t, i) => {
                     let className = "token";
-                    if (this.state && this.state.activeIndex == i) {
-                        className += " active";
+                    if (this.state) {
+                        if (this.state.activeIndex == i) {
+                            className += " active";
+                        }
+                        if (i >= this.state.hoverIndex && i < this.state.activeIndex && this.props.topkUrl != null) {
+                            className += " context";
+                        }
                     }
                     const style = {
                         backgroundColor:

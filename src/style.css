@@ -2,7 +2,7 @@
     max-height: 70vh;
     overflow-y: auto;
     border: 1px solid #d2d2d2;
-    border-radius: 5px;
+    border-radius: 5px 5px 0 0;
     padding: 2px;
     cursor: pointer;
 }
@@ -11,8 +11,8 @@
     outline: 1px solid #444;
 }
 
-.highlighted-text .token:not(.active):hover {
-    outline: 1px solid #999;
+.highlighted-text .token.context {
+    text-decoration: #999 underline;
 }
 
 .highlighted-text.loading .token.active, .highlighted-text.loading .token:hover{
@@ -38,7 +38,10 @@
 }
 
 .status-bar {
-    margin-top: 0.6rem;
+    border: 1px solid #d2d2d2;
+    border-top: none;
+    border-radius: 0 0 5px 5px;
+    padding: 3px 4px;
 }
 
 .status-bar .token {
