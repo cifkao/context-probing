@@ -97,6 +97,7 @@ def main():
             yield start_idx, end_idx, shard
             start_idx = end_idx
 
+    # Store the distributions for min and max context length for *all* the shards
     logprobs_ctx1 = torch.full(
         (total_len, vocab_size), torch.nan, device=args.device
     )
@@ -108,10 +109,34 @@ def main():
             torch.tensor(logits[:, 0], dtype=torch.float32, device=args.device),
             dim=-1
         )
-        logprobs_full[start_idx:end_idx] = torch.log_softmax(
-            torch.tensor(logits[:, -1], dtype=torch.float32, device=args.device),
+
+        # Loop over all sequences that overlap with this shard (should be just 1 or 2)
+        for seq_start_idx in seq_start_indices[start_idx:end_idx].unique():
+            # If the first window of the sequence is in this shard, use all the
+            # positions
+            if seq_start_idx in range(start_idx, end_idx):
+                logprobs_full[seq_start_idx:seq_start_idx + window_len] = (
+                    torch.log_softmax(
+                        torch.tensor(
+                            logits[seq_start_idx - start_idx],
+                            dtype=torch.float32,
+                            device=args.device
+                        ),
+                        dim=-1
+                    )
+                )
+        # For all other windows, use the last position
+        idxs = torch.arange(start_idx, end_idx)
+        tgt_idxs = idxs + window_len - 1
+        # Make sure we stay within the same sequence
+        mask = (seq_start_indices[tgt_idxs] == seq_start_indices[idxs])
+        logprobs_full[tgt_idxs[mask]] = torch.log_softmax(
+            torch.tensor(
+                logits[idxs[mask], -1], dtype=torch.float32, device=args.device
+            ),
             dim=-1
         )
+
         del logits
 
     metrics = {
@@ -141,11 +166,6 @@ def main():
         indices_clamped = torch.clamp(
             indices, max=seq_end_indices[start_idx:end_idx, None] - 1
         )
-        indices_fullctx_clamped = torch.clamp(
-            indices - window_len + 1,
-            min=seq_start_indices[start_idx:end_idx, None],
-            max=seq_end_indices[start_idx:end_idx, None] - 1
-        )
 
         # Compute metrics
         metrics["xent"][start_idx:end_idx] = cross_entropy(
@@ -155,7 +175,7 @@ def main():
             logprobs_ctx1[indices_clamped], logprobs
         )
         metrics["kl_full"][start_idx:end_idx] = kl_div(
-            logprobs, logprobs_full[indices_fullctx_clamped]
+            logprobs, logprobs_full[indices_clamped]
         )
         if args.topk:
             metrics["topk"][start_idx:end_idx] = logits.topk(args.topk).indices
@@ -166,8 +186,6 @@ def main():
         val = metrics[key].transpose(0, 1).contiguous().cpu()
         val = val.view(-1, *shape_tail)[:-window_len]
         val = val.view(window_len, total_len + window_len - 1, *shape_tail)
-        if val.is_floating_point() and not torch.isnan(val[:, -window_len + 1:]).all():
-            print(f"{key} trailing padding is not NaN:", val[:, -window_len + 1:], file=sys.stderr)
         val = val[:, :-window_len + 1]
         metrics[key] = val.transpose(0, 1)
 
