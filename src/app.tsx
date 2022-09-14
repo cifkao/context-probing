@@ -11,8 +11,9 @@ import Row from "react-bootstrap/Row";
 import TOKENS from "../data/en_lines-ud-dev.tokens.json";
 
 const MODEL_NAMES = ["gpt-j-6B", "gpt2-xl", "gpt2"];
+const SCORE_TYPES = [["kldiff", "KL divergence"], ["xentdiff", "Cross entropy"]];
 
-const SCORES_URLS = new Map(MODEL_NAMES.map(modelName =>
+const DATA_URLS = new Map(MODEL_NAMES.map(modelName =>
     [
         modelName,
         TOKENS.map(
@@ -25,12 +26,8 @@ const SCORES_URLS = new Map(MODEL_NAMES.map(modelName =>
 const VOCAB_URL = "data/inv_vocab.json";
 let vocab = {};
 
-function getScoresUrl(modelName: string, docIndex: number) {
-    return SCORES_URLS.get(modelName)[docIndex] + ".xentdiff.npy";
-}
-
-function getTopkUrl(modelName: string, docIndex: number) {
-    return SCORES_URLS.get(modelName)[docIndex] + ".topk.npy";
+function getDataUrl(modelName: string, docIndex: number, key: string) {
+    return DATA_URLS.get(modelName)[docIndex] + `.${key}.npy`;
 }
 
 const npyjs = new Npyjs();
@@ -41,33 +38,43 @@ async function loadNumpy(url: string) {
 }
 
 export class App extends React.Component {
-    state = {docIndex: 0, model: MODEL_NAMES[0], showTopk: false};
+    state = {docIndex: 0, model: MODEL_NAMES[0], scoreType: SCORE_TYPES[0][0], showTopk: false};
 
     render() {
         return (
             <Card>
                 <Card.Header>
                     <Row className="g-2">
-                        <Col md={3}>
+                        <Col md={2}>
                             <FloatingLabel controlId="modelSelect" label="Model">
                                 <Form.Select key="model"
                                              onChange={e => this.setState({model: e.target.value})}>
                                     {
-                                        MODEL_NAMES.map(modelName => 
-                                            <option key={modelName} value={modelName}>
-                                                {modelName}
-                                            </option>
+                                        MODEL_NAMES.map(key =>
+                                            <option key={key} value={key}>{key}</option>
                                         )
                                     }
                                 </Form.Select>
                             </FloatingLabel>
                         </Col>
-                        <Col md={9}>
+                        <Col md={2}>
+                            <FloatingLabel controlId="scoreSelect" label="Metric">
+                                <Form.Select key="scoreType"
+                                             onChange={e => this.setState({scoreType: e.target.value})}>
+                                    {
+                                        SCORE_TYPES.map(([key, text]) =>
+                                            <option key={key} value={key}>{text}</option>
+                                        )
+                                    }
+                                </Form.Select>
+                            </FloatingLabel>
+                        </Col>
+                        <Col md={8}>
                             <FloatingLabel controlId="docSelect" label="Text">
                                 <Form.Select key="doc"
                                              onChange={e => this.setState({docIndex: parseInt(e.target.value)})}>
                                     {
-                                        TOKENS.map((tokens, idx) => 
+                                        TOKENS.map((tokens, idx) =>
                                             <option key={idx} value={idx}>
                                                 {[...tokens.slice(0, 20), "…"].join("")}
                                             </option>
@@ -87,9 +94,9 @@ export class App extends React.Component {
                 </Card.Header>
                 <Card.Body>
                     <HighlightedText tokens={TOKENS[this.state.docIndex]}
-                                     scoresUrl={getScoresUrl(this.state.model, this.state.docIndex)}
-                                     topkUrl={this.state.showTopk ? getTopkUrl(this.state.model, this.state.docIndex) : null}
-                                     key={`${this.state.model}:${this.state.docIndex}:${this.state.showTopk}`} />
+                                     scoresUrl={getDataUrl(this.state.model, this.state.docIndex, this.state.scoreType)}
+                                     topkUrl={this.state.showTopk ? getDataUrl(this.state.model, this.state.docIndex, "topk") : null}
+                                     key={`${this.state.model}:${this.state.docIndex}:${this.state.scoreType}:${this.state.showTopk}`} />
                 </Card.Body>
             </Card>
         );
