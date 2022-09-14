@@ -127,12 +127,13 @@ def main():
                 )
         # For all other windows, use the last position
         idxs = torch.arange(start_idx, end_idx)
-        tgt_idxs = idxs + window_len - 1
+        offset = window_len - 1
         # Make sure we stay within the same sequence
-        mask = (seq_start_indices[tgt_idxs] == seq_start_indices[idxs])
-        logprobs_full[tgt_idxs[mask]] = torch.log_softmax(
+        idxs = idxs[idxs + offset < len(seq_start_indices)]
+        idxs = idxs[seq_start_indices[idxs + offset] == seq_start_indices[idxs]]
+        logprobs_full[idxs + offset] = torch.log_softmax(
             torch.tensor(
-                logits[idxs[mask], -1], dtype=torch.float32, device=args.device
+                logits[idxs - start_idx, -1], dtype=torch.float32, device=args.device
             ),
             dim=-1
         )
