@@ -145,6 +145,22 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
         };
 
         return <>
+            <div className="status-bar">
+                <strong>target:</strong>
+                {
+                    this.state.activeIndex != null
+                    ? <span className="token">{this.props.tokens[this.state.activeIndex]}</span>
+                    : <></>
+                }
+                {
+                    this.state.hoverIndex != null && topk[this.state.hoverIndex] != null
+                    ? <>
+                        <strong> top:</strong>
+                        {topk[this.state.hoverIndex].map(token => <span className="token">{token}</span>)}
+                    </>
+                    : <></>
+                }
+            </div>
             <div className={className} onClick={onClick}>
             {
                 this.props.tokens.map((t, i) => {
@@ -181,22 +197,6 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
                                  onMouseOver={onMouseOver} onClick={onClick}>{t}</span>;
                 })
             }
-            </div>
-            <div className="status-bar">
-                <strong>target:</strong>
-                {
-                    this.state.activeIndex != null
-                    ? <span className="token">{this.props.tokens[this.state.activeIndex]}</span>
-                    : <></>
-                }
-                {
-                    this.state.hoverIndex != null && topk[this.state.hoverIndex] != null
-                    ? <>
-                        <strong> top:</strong>
-                        {topk[this.state.hoverIndex].map(token => <span className="token">{token}</span>)}
-                    </>
-                    : <></>
-                }
             </div>
         </>;
     }

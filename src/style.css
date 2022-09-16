@@ -1,8 +1,8 @@
 .highlighted-text {
-    max-height: 70vh;
+    max-height: 60vh;
     overflow-y: auto;
     border: 1px solid #d2d2d2;
-    border-radius: 5px 5px 0 0;
+    border-radius: 0 0 5px 5px;
     padding: 2px;
     cursor: pointer;
 }
@@ -39,8 +39,8 @@
 
 .status-bar {
     border: 1px solid #d2d2d2;
-    border-top: none;
-    border-radius: 0 0 5px 5px;
+    border-bottom: none;
+    border-radius: 5px 5px 0 0;
     padding: 3px 4px;
 }
 
