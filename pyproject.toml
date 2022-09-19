@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "long-dep"
+name = "context-probing"
 version = "0.1.0"
 description = ""
 authors = ["Ondřej Cífka <cifkao@gmail.com>"]
