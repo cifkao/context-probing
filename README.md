@@ -37,4 +37,4 @@ The following scripts and notebooks are included:
       'preds/gpt-j-6B/en_lines-ud-dev-0*-of-00500.npy' \
       gpt-j-6B.en_lines-ud-dev.metrics.pth
   ```
-– `process_metrics.ipynb` – Produces the figures from the paper and the data files for the demo.
+- `process_metrics.ipynb` – Produces the figures from the paper and the data files for the demo.
