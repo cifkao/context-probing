@@ -8,8 +8,9 @@ import collections
 
 import conllu
 import datasets
-import pandas as pd
 import transformers
+
+from ..utils import BAD_CHAR
 
 
 def iter_sentences(paths):
@@ -45,8 +46,6 @@ def iter_docs(paths):
 
 
 CONLLU_FIELDS = ["form", "lemma", "upos", "xpos", "deprel", "feats", "id", "head"]
-
-BAD_CHAR = chr(0xfffd)
 
 
 def main():

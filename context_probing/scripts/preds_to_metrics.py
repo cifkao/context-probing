@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 import transformers
 
-from .predict_sliding import get_data
+from ..utils import get_data
 
 
 def _get_saved_shape(path):
