@@ -4,7 +4,7 @@
 
 Install the package with with `pip install -e .`, or better (to install exact dependency versions from the lockfile), `pip install poetry && poetry install`.
 
-The following scripts are included:
+The following scripts and notebooks are included:
 - `conllu_to_hf` – Converts a Universal Dependencies dataset in the [CoNLL-U](https://universaldependencies.org/format.html) format to a tokenized [HuggingFace dataset](https://github.com/huggingface/datasets) with the annotations included. E.g.:
   ```bash
   python -m context_probing.scripts.conllu_to_hf \
@@ -33,3 +33,4 @@ The following scripts are included:
       'preds/gpt-j-6B/en_lines-ud-dev-0*-of-00500.npy' \
       gpt-j-6B.en_lines-ud-dev.metrics.pth
   ```
+– `process_metrics.ipynb` – Produces the figures from the paper and the data files for the demo.
