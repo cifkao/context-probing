@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+    <title>Context length probing</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <div class="mt-4 mb-4">
+        <h1>Context length probing</h1>
+        <p>Hover over a token to see the left-hand context highlighted according to importance scores.
+          The score expresses the reduction in the selected metric
+          (green: decrease, red: increase) caused by adding a given token to the context.
+          Click a token to pin it, then try hovering over the context to see the corresponding top 5 predictions for the pinned token
+          (enable <strong>Show top predictions</strong> first).
+          Click anywhere to unpin the token.</p>
+        <div id="app" class="mt-4 mb-4">
+          <div class="card"><div class="card-header">Loading…</div></div>
+        </div>
+        <p>
+          The text is from the
+          <a href="https://universaldependencies.org/treebanks/en_lines/index.html" target="_blank">UD_English_LinES</a>
+          treebank from Universal Dependencies,
+          distributed under the
+          <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a>
+          license.
+        </p>
+      </div>
+    </div>
+    <script type="module" src="index.tsx"></script>
+  </body>
+</html>
