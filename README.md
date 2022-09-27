@@ -2,8 +2,6 @@
 
 When cloning the repo, use `--single-branch` to avoid fetching the demo data files.
 
-The code for the website is in the [`www`](https://github.com/cifkao/context-probing/tree/www) branch.
-
 ## Usage
 
 Install the package with with `pip install -e .`, or better (to install exact dependency versions from the lockfile), `pip install poetry && poetry install`.
