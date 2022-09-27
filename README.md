@@ -1,6 +1,6 @@
 # Context length probing
 
-When cloning the repo, use `--single-branch` to avoid fetching the demo data files.
+⚠️ When cloning the repo, use `--single-branch` to avoid fetching the demo data files.
 
 ## Usage
 
