@@ -10,6 +10,17 @@ import Row from "react-bootstrap/Row";
 
 import TOKENS from "../data/en_lines-ud-dev.tokens.json";
 
+const TEXT_NAMES = [
+    "Microsoft Access manual",
+    "City of Glass (Paul Auster)",
+    "To Jerusalem and Back (Saul Bellow)",
+    "Heart of Darkness (Joseph Conrad)",
+    "Europarl",
+    "A Guest of Honour (Nadine Gordimer)",
+    "Harry Potter and the Chamber of Secrets (J. K. Rowling)",
+    "Gut Symmetries (Jeanette Winterson)"
+]
+
 const MODEL_NAMES = ["gpt-j-6B", "gpt2-xl", "gpt2"];
 const SCORE_TYPES = [["kldiff", "KL divergence"], ["xentdiff", "Cross entropy"]];
 
@@ -75,9 +86,7 @@ export class App extends React.Component {
                                              onChange={e => this.setState({docIndex: parseInt(e.target.value)})}>
                                     {
                                         TOKENS.map((tokens, idx) =>
-                                            <option key={idx} value={idx}>
-                                                {[...tokens.slice(0, 20), "…"].join("")}
-                                            </option>
+                                            <option key={idx} value={idx}>{TEXT_NAMES[idx]}</option>
                                         )
                                     }
                                 </Form.Select>
