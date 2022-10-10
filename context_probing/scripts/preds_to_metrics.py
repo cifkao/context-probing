@@ -44,6 +44,7 @@ def kl_div(log_q, log_p):
     return F.kl_div(log_q, log_p, log_target=True, reduction="none").sum(dim=-1)
 
 
+@torch.inference_mode()
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("data_path", type=str)
@@ -51,6 +52,7 @@ def main():
     parser.add_argument("output_path", type=str)
     parser.add_argument("--tokenizer-path", type=str, required=True)
     parser.add_argument("--topk", type=int, default=None)
+    parser.add_argument("--max-ctx", type=int, default=None)
     parser.add_argument("--device", type=str, default="cpu")
     args = parser.parse_args()
 
@@ -58,6 +60,8 @@ def main():
 
     shard_paths = sorted(glob.glob(args.input_path_pattern))
     _, window_len, vocab_size = _get_saved_shape(shard_paths[0])
+    if args.max_ctx is not None:
+        window_len = args.max_ctx
     tokenizer = transformers.AutoTokenizer.from_pretrained(args.tokenizer_path)
     pad_id = (
         tokenizer.pad_token_id if tokenizer.pad_token_id is not None
@@ -93,6 +97,7 @@ def main():
         start_idx = 0
         for path in shard_paths:
             shard = np.load(path, mmap_mode="r")
+            shard = shard[:, :window_len]
             end_idx = start_idx + len(shard)
             yield start_idx, end_idx, shard
             start_idx = end_idx
