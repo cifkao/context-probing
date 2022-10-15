@@ -22,7 +22,7 @@ const TEXT_NAMES = [
 ]
 
 const MODEL_NAMES = ["gpt-j-6B", "gpt2-xl", "gpt2"];
-const SCORE_TYPES = [["kldiff", "KL divergence"], ["xentdiff", "Cross entropy"]];
+const SCORE_TYPES = [["kldiff", "KL divergence"], ["xentdiff", "NLL loss"]];
 
 const DATA_URLS = new Map(MODEL_NAMES.map(modelName =>
     [
