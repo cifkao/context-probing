@@ -30,7 +30,7 @@ The following scripts and notebooks are included:
 - `preds_to_metrics` – Reads the predictions produced by `predict_sliding` and computes different metrics (cross entropy, KL divergence, top k predictions). E.g.:
   ```bash
   python -m context_probing.scripts.preds_to_metrics \
-      --tokenizer-path EleutherAI/gpt-j-6B --topk 10 \
+      --tokenizer-path EleutherAI/gpt-j-6B --topk 10 --max-ctx 1023 \
       data/en_lines-ud-dev \
       'preds/gpt-j-6B/en_lines-ud-dev-0*-of-00500.npy' \
       gpt-j-6B.en_lines-ud-dev.metrics.pth
