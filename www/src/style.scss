@@ -1,9 +1,31 @@
+@import "../node_modules/bootstrap/scss/bootstrap.scss";
+
+
 a:not(:hover) {
     text-decoration: none !important;
 }
 
 .authors .list-inline-item:not(:last-child) {
     margin-right: 0.9rem;
+}
+
+.header {
+    @include media-breakpoint-only(xs) {
+        .buttons .list-inline-item {
+            display: block;
+            margin-right: 0;
+
+            &:not(:last-child) {
+                margin-bottom: 0.5rem;
+            }
+
+            .btn {
+                display: block;
+                width: 100%;
+                padding: 0.5rem;
+            }
+        }
+    }
 }
 
 

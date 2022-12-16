@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8"/>
     <title>Black-box LM explanation by context length probing</title>
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="style.scss" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css" integrity="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY=" crossorigin="anonymous">
   </head>
   <body>
@@ -15,12 +15,12 @@
           <li><a href="https://www.lirmm.fr/teams-en/zenith-en/">Zenith Team</a>, <a href="https://www.lirmm.fr/">LIRMM</a>, CNRS UMR 5506</li>
           <li><a href="https://www.inria.fr/">Inria</a>, <a href="https://www.umontpellier.fr/">Université de Montpellier</a>, France</li>
         </ul>
-        <ul class="list-inline text-center mb-3">
+        <ul class="buttons list-inline text-center mb-3">
           <li class="list-inline-item"><a href="https://openreview.net/forum?id=jAV54R6Vbx" class="btn btn-outline-primary"><i class="fa fa-file-text"></i> Paper</a></li>
           <li class="list-inline-item"><a href="https://github.com/cifkao/context-probing" class="btn btn-outline-primary"><i class="fa fa-code"></i> Code</a></li>
           <li class="list-inline-item"><a href="#demo" class="btn btn-outline-primary"><i class="fa fa-mouse-pointer"></i> Demo</a></li>
         </ul>
-        <p class="small"><strong class="me-2">Abstract:</strong> The increasingly widespread adoption of large
+        <p class="small"><strong class="me-1">Abstract.</strong> The increasingly widespread adoption of large
           language models has highlighted the need for improving their explainability.
           We present <strong>context length probing</strong>, a novel explanation technique for causal language models, based on tracking the predictions of a model as a function of the length of available context, and
           allowing to assign <strong>differential importance scores</strong> to different contexts.
@@ -34,7 +34,7 @@
           The score expresses the reduction in the selected metric
           (green: decrease, red: increase) caused by adding a given token to the context.
           Click a token to pin it, then try hovering over the context to see the corresponding top 5 predictions for the pinned token
-          (enable <strong>Show top predictions</strong> first).
+          (enable <mark class="bg-light rounded-2">Show top predictions</mark> first).
           Click anywhere to unpin the token.</p>
         <div id="app" class="mt-4 mb-4">
           <div class="card"><div class="card-header">Loading…</div></div>
