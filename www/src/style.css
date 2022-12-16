@@ -1,3 +1,12 @@
+a:not(:hover) {
+    text-decoration: none !important;
+}
+
+.authors .list-inline-item:not(:last-child) {
+    margin-right: 0.9rem;
+}
+
+
 .highlighted-text {
     max-height: 60vh;
     overflow-y: auto;
