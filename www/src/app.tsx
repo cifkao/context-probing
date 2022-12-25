@@ -159,18 +159,18 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
 
         return <>
             <div className="status-bar" key="status-bar">
-                <span className={this.state.isFrozen ? "" : " d-none"}><i className="fa fa-lock"></i> </span>
-                <strong>target:</strong>
+                <span className={this.state.isFrozen ? "" : " d-none"} key="lock-icon"><i className="fa fa-lock"></i> </span>
+                <strong key="target-label">target:</strong>
                 {
                     this.state.activeIndex != null
-                    ? <span className="token">{this.props.tokens[this.state.activeIndex]}</span>
+                    ? <span className="token" key="target">{this.props.tokens[this.state.activeIndex]}</span>
                     : <></>
                 }
                 {
                     this.state.hoverIndex != null && topk[this.state.hoverIndex] != null
                     ? <>
-                        <strong> top:</strong>
-                        {topk[this.state.hoverIndex].map(token => <span className="token">{token}</span>)}
+                        <strong key="top-label"> top:</strong>
+                        {topk[this.state.hoverIndex].map((token, i) => <span className="token" key={`top-${i}`}>{token}</span>)}
                     </>
                     : <></>
                 }
