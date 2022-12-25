@@ -29,6 +29,27 @@ a:not(:hover) {
 }
 
 
+.nudge {
+    animation: nudge 0.35s ease 2, glow 0.7s linear 1;
+}
+
+@keyframes nudge {
+    50% {
+        padding-left: 0.7em;
+        margin-right: -0.7em;
+    }
+}
+
+@keyframes glow {
+    15% {
+        text-shadow: 0 0 7px #ffcc00;
+    }
+    85% {
+        text-shadow: 0 0 7px #ffcc00;
+    }
+}
+
+
 .highlighted-text {
     max-height: 60vh;
     overflow-y: auto;

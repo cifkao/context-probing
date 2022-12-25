@@ -49,7 +49,7 @@ async function loadNumpy(url: string) {
 }
 
 export class App extends React.Component {
-    state = {docIndex: 0, model: MODEL_NAMES[0], scoreType: SCORE_TYPES[0][0], showTopk: false};
+    state = {docIndex: 0, model: MODEL_NAMES[0], scoreType: SCORE_TYPES[0][0], showTopk: false, isFrozen: false};
 
     render() {
         return (
@@ -95,9 +95,11 @@ export class App extends React.Component {
                     </Row>
                     <Row className="g-2 mt-1">
                         <Col>
-                            <Form.Check type="switch" id="topkSwitch"
-                                label="Show top predictions (loads 40MB+ of data)"
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => this.setState({showTopk: e.target.checked})} />
+                            <div className={this.state.isFrozen && !this.state.showTopk ? "nudge" : ""}>
+                                <Form.Check type="switch" id="topkSwitch"
+                                    label="Show top predictions (loads 40MB+ of data)"
+                                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => this.setState({showTopk: e.target.checked})} />
+                            </div>
                         </Col>
                     </Row>
                 </Card.Header>
@@ -105,7 +107,8 @@ export class App extends React.Component {
                     <HighlightedText tokens={TOKENS[this.state.docIndex]}
                                      scoresUrl={getDataUrl(this.state.model, this.state.docIndex, this.state.scoreType)}
                                      topkUrl={this.state.showTopk ? getDataUrl(this.state.model, this.state.docIndex, "topk") : null}
-                                     key={`${this.state.model}:${this.state.docIndex}:${this.state.scoreType}:${this.state.showTopk}`} />
+                                     key={`${this.state.model}:${this.state.docIndex}:${this.state.scoreType}:${this.state.showTopk}`}
+                                     onFrozenChange={(isFrozen: boolean) => { this.setState({isFrozen: isFrozen}); }} />
                 </Card.Body>
             </Card>
         );
@@ -115,7 +118,8 @@ export class App extends React.Component {
 type HighlightedTextProps = {
     tokens: string[],
     scoresUrl: string,
-    topkUrl: string
+    topkUrl: string,
+    onFrozenChange: (isFrozen: boolean) => void
 };
 type HighlightedTextState = {
     scores: ndarray.NdArray<number[]>,
@@ -154,7 +158,8 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
         };
 
         return <>
-            <div className="status-bar">
+            <div className="status-bar" key="status-bar">
+                <span className={this.state.isFrozen ? "" : " d-none"}><i className="fa fa-lock"></i> </span>
                 <strong>target:</strong>
                 {
                     this.state.activeIndex != null
@@ -170,7 +175,7 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
                     : <></>
                 }
             </div>
-            <div className={className} onClick={onClick}>
+            <div className={className} onClick={onClick} key="text">
             {
                 this.props.tokens.map((t, i) => {
                     let className = "token";
@@ -197,10 +202,12 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
                     };
                     const onClick = (event: React.MouseEvent) => {
                         this.setState({isFrozen: !this.state.isFrozen});
-                        event.stopPropagation();
-                        if (this.state.isFrozen) {  // setState is not in effect yet
+                        // setState is not yet in effect below
+                        this.props.onFrozenChange(!this.state.isFrozen);
+                        if (this.state.isFrozen) {
                             this.setState({activeIndex: i});
                         }
+                        event.stopPropagation();
                     };
                     return <span key={i} className={className} style={style}
                                  onMouseOver={onMouseOver} onClick={onClick}>{t}</span>;
