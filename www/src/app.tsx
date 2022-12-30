@@ -152,6 +152,9 @@ class HighlightedText extends React.Component<HighlightedTextProps, HighlightedT
         if (this.state.scores == null) {
             className += " loading";
         }
+        if (this.state.isFrozen) {
+            className += " frozen";
+        }
 
         const onClick = () => {
             this.setState({isFrozen: false});
