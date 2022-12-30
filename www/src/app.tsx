@@ -29,7 +29,7 @@ const DATA_URLS = new Map(MODEL_NAMES.map(modelName =>
         modelName,
         TOKENS.map(
             (_, i) => `data/${modelName}.en_lines-ud-dev` +
-                      `.${("0000" + i).slice(0, 5)}`
+                      `.${("0000" + i).slice(-5)}`
         )
     ]
 ));
