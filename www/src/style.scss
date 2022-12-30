@@ -90,7 +90,7 @@ a:not(:hover) {
         .token {
             opacity: 0.75;
 
-            &.context, &.active{
+            &.context, &.active {
                 opacity: 1;
             }
 
@@ -108,8 +108,12 @@ a:not(:hover) {
         animation: shimmer 1.5s linear infinite;
         cursor: wait;
 
-        .token.active, .token:hover {
-            outline: none;
+        .token {
+            &, &.context, &.active {
+                outline: none;
+                text-decoration: none;
+                opacity: 1;
+            }
         }
     }
 }
