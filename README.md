@@ -1,5 +1,7 @@
 # Context length probing
 
+[![](https://raw.githubusercontent.com/cifkao/context-probing/assets/demo.gif)](https://cifkao.github.io/context-probing/)
+
 ⚠️ When cloning the repo, use `--single-branch` to avoid fetching the demo data files.
 
 ## Usage
