@@ -1,8 +1,24 @@
 # Context length probing
 
-[![](https://raw.githubusercontent.com/cifkao/context-probing/assets/demo.gif)](https://cifkao.github.io/context-probing/)
+This is the source code repository for the paper [*Black-box language model explanation by context length probing*](https://arxiv.org/abs/2212.14815) by Ondřej Cífka and Antoine Liutkus.
 
 ⚠️ When cloning the repo, use `--single-branch` to avoid fetching the demo data files.
+
+[![](https://raw.githubusercontent.com/cifkao/context-probing/assets/demo.gif)](https://cifkao.github.io/context-probing/)
+
+Citation:
+```bibtex
+@article{cifka2022blackbox,
+  title={Black-box language model explanation by context length probing},
+  author={C{\'i}fka, Ond{\v{r}}ej and Liutkus, Antoine},
+  journal={CoRR},
+  volume={abs/2212.14815},
+  year={2022},
+  url={https://arxiv.org/abs/2212.14815},
+  eprinttype={arXiv},
+  eprint={2212.14815}
+}
+```
 
 ## Usage
 
@@ -27,7 +43,7 @@ The following scripts and notebooks are included:
           preds/gpt-j-6B/en_lines-ud-dev
   done
   ```
-  ⚠️ This will produce 2.1 TB of data (4.2 GB per shard).  
+  ⚠️ For the `en_lines-ud-dev` dataset, this will produce 2.1 TB of data (4.2 GB per shard).  
   ⚠️ You may want to parallelize this by submitting each shard to a different compute node. Adjust `--num-proc` and `--batch-size` to the number of available CPU cores and memory.
 - `preds_to_metrics` – Reads the predictions produced by `predict_sliding` and computes different metrics (cross entropy, KL divergence, top k predictions). E.g.:
   ```bash
