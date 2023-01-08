@@ -6,6 +6,11 @@ This is the source code repository for the paper [*Black-box language model expl
 
 [![](https://raw.githubusercontent.com/cifkao/context-probing/assets/demo.gif)](https://cifkao.github.io/context-probing/)
 
+Links:  
+[📃 Pre-print](https://arxiv.org/abs/2212.14815)  
+[🕹️ Demo](https://cifkao.github.io/context-probing/#demo)  
+[📉 Computed metrics](https://doi.org/10.5281/zenodo.7513991)
+
 Citation:
 ```bibtex
 @article{cifka2022blackbox,
@@ -53,4 +58,5 @@ The following scripts and notebooks are included:
       'preds/gpt-j-6B/en_lines-ud-dev-0*-of-00500.npy' \
       gpt-j-6B.en_lines-ud-dev.metrics.pth
   ```
+  The computed metrics (for the `en_lines-ud-dev` dataset) can be downloaded [here](https://doi.org/10.5281/zenodo.7513991).
 - `process_metrics.ipynb` – Produces the figures from the paper and the data files for the demo.
