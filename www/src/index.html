@@ -29,8 +29,13 @@
           We apply context length probing to large pre-trained language models and offer some initial analyses and insights, including the potential for studying long-range dependencies.
         </p>
       </div>
-      <div>
-        <h2 id="demo">Demo</h2>
+      <h2 id="demo">Demos</h2>
+      <p>We provide two demos: a <a href="#static-demo">static one</a> with the models and the dataset from the paper,
+         and an <a href="#interactive-demo">interactive one</a> (a <a href="https://huggingface.co/spaces/cifkao/context-probing">🤗 Space</a>) for trying out some smaller models
+         on arbitrary inputs.
+      </p>
+      <div id="static-demo">
+        <h3>Static</h3>
         <p>Hover over a token to see the left-hand context highlighted according to importance scores.
           The score expresses the reduction in the selected metric
           (green: decrease, red: increase) caused by adding a given token to the context.
@@ -48,6 +53,15 @@
           <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a>
           license.
         </p>
+      </div>
+      <div id="interactive-demo">
+        <h3>Interactive</h3>
+        <iframe
+          src="https://cifkao-context-probing.hf.space?embed=true&compact=true&theme=light#lighttheme"
+          frameborder="0"
+          width="850"
+          height="900"
+        ></iframe>
       </div>
     </div>
     <script type="module" src="index.tsx"></script>
