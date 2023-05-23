@@ -9,6 +9,7 @@ This is the source code repository for the paper [*Black-box language model expl
 Links:  
 [📃 Pre-print](https://arxiv.org/abs/2212.14815)  
 [🕹️ Demo](https://cifkao.github.io/context-probing/#demo)  
+[🤗 Space](https://huggingface.co/spaces/cifkao/context-probing) (under construction)   
 [📉 Computed metrics](https://doi.org/10.5281/zenodo.7513991)
 
 Citation:
