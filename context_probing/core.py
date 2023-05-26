@@ -1,9 +1,10 @@
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 from transformers import BatchEncoding, PreTrainedTokenizer
+from transformers.modeling_outputs import CausalLMOutput
 
 
 def get_windows(
@@ -33,7 +34,7 @@ def get_windows(
 
 
 def get_logprobs(
-    model: torch.Module,
+    model: Callable[..., CausalLMOutput],
     inputs: torch.Tensor,
     label_probs: bool = False,
     batch_size: int = 8,
@@ -96,11 +97,11 @@ METRIC_FUNCTIONS = {
 
 @torch.inference_mode()
 def run_probing(
-    model: torch.Module,
-    tokenizer: PreTrainedTokenizer,
+    model: Callable[..., CausalLMOutput],
     inputs: Dict[str, torch.Tensor],
     window_len: int,
     metrics: Optional[List[str]] = None,
+    eos_id: int = 0,
 ) -> Dict[str, torch.Tensor]:
     if not metrics:
         metrics = ["kl_div", "xent"]
@@ -109,11 +110,11 @@ def run_probing(
     if "labels" in inputs:
         [label_ids] = inputs["labels"]
     else:
-        label_ids = list(input_ids)[1:] + [tokenizer.eos_token_id]
+        label_ids = list(input_ids)[1:] + [eos_id]
 
     window_len = min(window_len, len(input_ids))
     inputs_sliding = get_windows(
-        inputs, window_len=window_len, pad_id=tokenizer.eos_token_id
+        inputs, window_len=window_len, pad_id=eos_id
     ).convert_to_tensors("pt")
     logprobs = get_logprobs(
         model=model,
