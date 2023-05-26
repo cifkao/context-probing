@@ -1,1 +1,1 @@
-from core import run_probing, get_importance_scores
+from .core import run_probing, get_importance_scores
