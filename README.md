@@ -9,7 +9,7 @@ This is the source code repository for the ACL 2023 short paper [*Black-box lang
 Links:  
 [📃 Pre-print](https://arxiv.org/abs/2212.14815)  
 [🕹️ Demo](https://cifkao.github.io/context-probing/#demo)  
-[🤗 Space](https://huggingface.co/spaces/cifkao/context-probing) (under construction)   
+[🤗 Space](https://huggingface.co/spaces/cifkao/context-probing)   
 [📉 Computed metrics](https://doi.org/10.5281/zenodo.7513991)
 
 Citation:
@@ -64,7 +64,7 @@ from context_probing import get_diff_importance_scores
 
 imp_scores = get_diff_importance_scores(scores["kl_div"], normalize=True, nan_to_zero=False)
 ```
-The first dimension corresponds to the target tokens, the second one to the context tokens. We can plot the scores like this:
+The first dimension corresponds to the target tokens, the second one to the context tokens. We can plot the scores like so:
 ```python
 from context_probing import ids_to_readable_tokens
 import matplotlib.pyplot as plt
