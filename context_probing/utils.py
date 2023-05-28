@@ -1,8 +1,10 @@
+from typing import Any, Dict, Optional
+
 import datasets
 import numpy as np
-
 import torch
 import torch.nn.functional as F
+from transformers import BatchEncoding
 
 
 BAD_CHAR = chr(0xFFFD)
@@ -19,6 +21,34 @@ def _get_windows_batched(examples, window_len, pad_id):
         ]
         for k, t in examples.items()
     }
+
+
+def get_windows(
+    examples: Dict[str, Any],
+    window_len: int,
+    start: int = 0,
+    stride: int = 1,
+    pad_id: int = 0,
+    return_tensors: Optional[str] = None,
+) -> BatchEncoding:
+    """Get windows of length `window_len` from `examples`.
+
+    Windows are padded with `pad_id` to the right up to `window_len`. The last window starts with
+    the last token.
+    """
+    return BatchEncoding(
+        {
+            k: [
+                list(t[i][j : j + window_len])
+                + [pad_id if k in ["input_ids", "labels"] else 0]
+                * (j + window_len - len(t[i]))
+                for i in range(len(examples["input_ids"]))
+                for j in range(start, len(examples["input_ids"][i]), stride)
+            ]
+            for k, t in examples.items()
+        },
+        tensor_type=return_tensors,
+    )
 
 
 def _add_labels(example):

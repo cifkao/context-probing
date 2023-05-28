@@ -1,43 +1,21 @@
-from typing import Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 import torch
 import torch.nn.functional as F
-from transformers import BatchEncoding
 from transformers.modeling_outputs import CausalLMOutput
 
-from .utils import columns_to_diagonals, diagonals_to_columns, rows_to_diagonals
-
-
-def get_windows(
-    examples: BatchEncoding,
-    window_len: int,
-    start: int = 0,
-    stride: int = 1,
-    pad_id: int = 0,
-) -> BatchEncoding:
-    """Get windows of length `window_len` from `examples`.
-
-    Windows are padded with `pad_id` to the right up to `window_len`. The last window starts with
-    the last token.
-    """
-    return BatchEncoding(
-        {
-            k: [
-                t[i][j : j + window_len]
-                + [pad_id if k in ["input_ids", "labels"] else 0]
-                * (j + window_len - len(t[i]))
-                for i in range(len(examples["input_ids"]))
-                for j in range(start, len(examples["input_ids"][i]), stride)
-            ]
-            for k, t in examples.items()
-        }
-    )
+from .utils import (
+    columns_to_diagonals,
+    diagonals_to_columns,
+    get_windows,
+    rows_to_diagonals,
+)
 
 
 def get_logprobs(
     model: Callable[..., CausalLMOutput],
-    inputs: torch.Tensor,
+    inputs: Dict[str, Any],
     label_probs: bool = False,
     batch_size: int = 8,
 ) -> torch.Tensor:
@@ -107,13 +85,18 @@ METRIC_FUNCTIONS = {
 @torch.inference_mode()
 def run_probing(
     model: Callable[..., CausalLMOutput],
-    inputs: Dict[str, torch.Tensor],
+    inputs: Dict[str, Any],
     window_len: int,
     metrics: Optional[List[str]] = None,
     eos_id: int = 0,
 ) -> Dict[str, torch.Tensor]:
     if not metrics:
         metrics = ["kl_div", "xent"]
+
+    if len(inputs["input_ids"]) < 1 or not isinstance(
+        inputs["input_ids"][0], (list, torch.Tensor)
+    ):
+        inputs = {k: [v] for k, v in inputs.items()}
 
     [input_ids] = inputs["input_ids"]
     if "labels" in inputs:
@@ -123,8 +106,8 @@ def run_probing(
 
     window_len = min(window_len, len(input_ids))
     inputs_sliding = get_windows(
-        inputs, window_len=window_len, pad_id=eos_id
-    ).convert_to_tensors("pt")
+        inputs, window_len=window_len, pad_id=eos_id, return_tensors="pt"
+    )
     logprobs = get_logprobs(
         model=model,
         inputs=inputs_sliding,
