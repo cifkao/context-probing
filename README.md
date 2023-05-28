@@ -32,7 +32,7 @@ Install the package with with `pip install -e .`, or better (to install exact de
 
 The `context_probing` package provides functions to use our method with 🤗 Transformers with a few lines of code:
 ```python
-from context_probing import run_probing, get_diff_importance_scores
+from context_probing import run_probing
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
@@ -54,6 +54,21 @@ print(scores)
                  ...,
                  [nan, nan,  nan, ..., nan, nan, 8.2]], dtype=torch.float16)}
 ```
+
+To obtain and plot the differential importance scores:
+```python
+from context_probing import get_diff_importance_scores, ids_to_readable_tokens
+
+imp_scores = get_diff_importance_scores(scores["kl_div"], normalize=True, nan_to_zero=False)
+tokens = ids_to_readable_tokens(tokenizer, inputs["input_ids"] + [tokenizer.eos_token_id])
+plt.imshow(imp_scores, cmap="RdYlGn", vmin=-1., vmax=1.)
+plt.colorbar(shrink=0.8)
+plt.yticks(range(len(tokens) - 1), tokens[1:])
+plt.xticks(range(len(tokens) - 1), tokens[:-1], rotation=90)
+plt.xlabel("Context token")
+plt.ylabel("Target token")
+```
+![](https://raw.githubusercontent.com/cifkao/context-probing/assets/imp_score_imshow.png)
 
 ### Scripts and notebooks
 
