@@ -30,7 +30,34 @@ Citation:
 
 Install the package with with `pip install -e .`, or better (to install exact dependency versions from the lockfile), `pip install poetry && poetry install`.
 
-The following scripts and notebooks are included:
+The `context_probing` package provides functions to use our method with 🤗 Transformers with a few lines of code:
+```python
+from context_probing import run_probing, get_diff_importance_scores
+from transformers import AutoTokenizer, AutoModelForCausalLM
+
+tokenizer = AutoTokenizer.from_pretrained("gpt2")
+model = AutoModelForCausalLM.from_pretrained("gpt2")
+
+inputs = tokenizer("Harry heard from Hogwarts one sunny morning about a week after he had arrived at The Burrow.")
+scores = run_probing(inputs=inputs, model=model, tokenizer=tokenizer)
+print(scores)
+```
+```python
+{'kl_div': tensor([[0.0, 1.2, 1.4,  ..., 7.5, 1.8, 2.5],
+                   [nan, 0.0, 0.6,  ..., 3.4, 1.3, 2.2],
+                   [nan, nan, 0.0,  ..., 2.7, 2.0, 1.2],
+                   ...,
+                   [nan, nan, nan,  ..., nan, nan, 0.0]], dtype=torch.float16),
+ 'xent': tensor([[8.9, 4.7, 12.1, ..., 7.5, 3.2, 4.8],
+                 [nan, 4.0, 11.3, ..., 3.4, 2.7, 5.1],
+                 [nan, nan, 10.7, ..., 2.7, 3.5, 4.3],
+                 ...,
+                 [nan, nan,  nan, ..., nan, nan, 8.2]], dtype=torch.float16)}
+```
+
+### Scripts and notebooks
+
+These are the scripts and notebooks used for the paper. They allow for larger models, inputs and contexts than the simple API described above.
 - `conllu_to_hf` – Converts a Universal Dependencies dataset in the [CoNLL-U](https://universaldependencies.org/format.html) format to a tokenized [HuggingFace dataset](https://github.com/huggingface/datasets) with the annotations included. E.g.:
   ```bash
   python -m context_probing.scripts.conllu_to_hf \
