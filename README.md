@@ -64,7 +64,7 @@ from context_probing import get_diff_importance_scores
 
 imp_scores = get_diff_importance_scores(scores["kl_div"], normalize=True, nan_to_zero=False)
 ```
-The first dimension corresponds to the target tokens, the second one to the context tokens.
+The first dimension corresponds to the target tokens, the second one to the context tokens. We can plot the scores like this:
 ```python
 from context_probing import ids_to_readable_tokens
 import matplotlib.pyplot as plt
