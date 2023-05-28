@@ -54,6 +54,7 @@ print(scores)
                  ...,
                  [nan, nan,  nan, ..., nan, nan, 8.2]], dtype=torch.float16)}
 ```
+The first dimension of each scores tensor corresponds to context length (from 1 up to the total number of tokens), the second dimension to the _target_ token position, starting with the second token ("heard") and ending with the end-of-sequence token ("<|endoftext|>").
 
 To obtain and plot the differential importance scores:
 ```python
