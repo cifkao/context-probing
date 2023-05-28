@@ -3,8 +3,10 @@ from typing import Callable, Dict, List, Optional
 import numpy as np
 import torch
 import torch.nn.functional as F
-from transformers import BatchEncoding, PreTrainedTokenizer
+from transformers import BatchEncoding
 from transformers.modeling_outputs import CausalLMOutput
+
+from .utils import columns_to_diagonals, diagonals_to_columns, rows_to_diagonals
 
 
 def get_windows(
@@ -52,15 +54,22 @@ def get_logprobs(
     return torch.cat(logprobs, dim=0)
 
 
-def nll_score(logprobs: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+def nll_score(
+    logprobs: torch.Tensor, labels: torch.Tensor, allow_overwrite: bool = False
+) -> torch.Tensor:
     if logprobs.shape[-1] == 1:
         return -logprobs.squeeze(-1)
     else:
         return -logprobs[:, torch.arange(len(labels)), labels]
 
 
-def kl_div_score(logprobs: torch.Tensor, labels: torch.Tensor) -> torch.Tensor:
+def kl_div_score(
+    logprobs: torch.Tensor, labels: torch.Tensor, allow_overwrite: bool = False
+) -> torch.Tensor:
     del labels
+
+    if not allow_overwrite:
+        logprobs = logprobs.clone()
 
     log_p = logprobs[
         torch.arange(logprobs.shape[1]).clamp(max=logprobs.shape[0] - 1),
@@ -119,16 +128,13 @@ def run_probing(
     logprobs = get_logprobs(
         model=model,
         inputs=inputs_sliding,
-        label_probs=all(m == "xent" for m in metrics),
+        label_probs=all(m in ["xent", "nll"] for m in metrics),
     )
-    num_tgt_tokens = logprobs.shape[0]
+    num_tokens = logprobs.shape[0]
 
     logprobs = logprobs.permute(1, 0, 2)
-    logprobs = F.pad(logprobs, (0, 0, 0, window_len, 0, 0), value=torch.nan)
-    logprobs = logprobs.view(-1, logprobs.shape[-1])[:-window_len]
-    logprobs = logprobs.view(
-        window_len, num_tgt_tokens + window_len - 1, logprobs.shape[-1]
-    )
+    logprobs = columns_to_diagonals(logprobs)
+    logprobs = logprobs[:, :num_tokens]
 
     scores = {}
     for key in metrics:
@@ -138,8 +144,22 @@ def run_probing(
 
 
 @torch.inference_mode()
-def get_importance_scores(scores: torch.Tensor) -> torch.Tensor:
-    scores = (-scores).diff(dim=0).transpose(0, 1)
-    scores = scores.nan_to_num()
-    scores /= scores.abs().max(dim=1, keepdim=True).values + 1e-6
+def get_diff_importance_scores(
+    scores: torch.Tensor, normalize: bool = False, nan_to_zero: bool = True
+) -> torch.Tensor:
+    num_tokens = scores.size(1)
+
+    scores = F.pad(scores, (0, scores.size(0) - 1), value=torch.nan)
+    scores = diagonals_to_columns(scores)
+    scores = rows_to_diagonals(scores)
+    scores = scores[:num_tokens]
+
+    scores = (-scores).flip(1).diff(1).flip(1)
+    scores = F.pad(scores, (0, 1), value=torch.nan)
+
+    if nan_to_zero:
+        scores = scores.nan_to_num()
+    if normalize:
+        eps = torch.finfo(scores.dtype).eps
+        scores /= scores.nan_to_num().abs().max(dim=1, keepdim=True).values + eps
     return scores

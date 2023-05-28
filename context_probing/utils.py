@@ -1,18 +1,19 @@
 import datasets
 import numpy as np
 
+import torch
+import torch.nn.functional as F
 
-BAD_CHAR = chr(0xfffd)
+
+BAD_CHAR = chr(0xFFFD)
 
 
 def _get_windows_batched(examples, window_len, pad_id):
     return {
         k: [
-            t[i][j : j + window_len] + [
-                pad_id if k == "input_ids" else
-                0 if type(t[i][0]) == int else
-                None
-            ] * (j + window_len - len(t[i]))
+            t[i][j : j + window_len]
+            + [pad_id if k == "input_ids" else 0 if type(t[i][0]) == int else None]
+            * (j + window_len - len(t[i]))
             for i in range(len(examples["input_ids"]))
             for j in range(len(examples["input_ids"][i]) - 1)
         ]
@@ -36,7 +37,13 @@ def _add_seq_ids(example, idx):
 
 
 def get_data(
-    path, pad_id=-1, window_len=None, columns=None, add_positions=False, add_seq_ids=False, num_proc=16
+    path,
+    pad_id=-1,
+    window_len=None,
+    columns=None,
+    add_positions=False,
+    add_seq_ids=False,
+    num_proc=16,
 ):
     dataset = datasets.Dataset.load_from_disk(path)
     if columns is not None:
@@ -50,8 +57,11 @@ def get_data(
         dataset = dataset.map(_add_seq_ids, num_proc=num_proc, with_indices=True)
     if window_len is not None:
         dataset = dataset.map(
-            _get_windows_batched, fn_kwargs=dict(window_len=window_len, pad_id=pad_id),
-            batched=True, batch_size=1, num_proc=num_proc
+            _get_windows_batched,
+            fn_kwargs=dict(window_len=window_len, pad_id=pad_id),
+            batched=True,
+            batch_size=1,
+            num_proc=num_proc,
         )
     return dataset
 
@@ -77,3 +87,45 @@ def ids_to_readable_tokens(tokenizer, ids, strip_whitespace=True):
         else:
             result.append("")
     return result
+
+
+def columns_to_diagonals(tensor: torch.Tensor, fill_value=torch.nan) -> torch.Tensor:
+    """Rearrange a tensor so that columns become diagonals; inserted positions are filled with
+    `fill_value`.
+
+    The rows and columns are the first two dimensions, respectively; the remaining dimensions are
+    left untouched.
+    """
+    num_rows, num_cols = tensor.shape[:2]
+    tensor = F.pad(
+        tensor, (*((0,) * 2 * (tensor.ndim - 2)), 0, num_rows), value=fill_value
+    )
+    tensor = tensor.reshape(-1, *tensor.shape[2:])[:-num_rows]
+    tensor = tensor.reshape(num_rows, num_cols + num_rows - 1, *tensor.shape[1:])
+    return tensor
+
+
+def rows_to_diagonals(tensor: torch.Tensor, fill_value=torch.nan) -> torch.Tensor:
+    """Rearrange a tensor so that rows become diagonals; inserted positions are filled with
+    `fill_value`.
+
+    The rows and columns are the first two dimensions, respectively; the remaining dimensions are
+    left untouched.
+    """
+    return columns_to_diagonals(tensor.transpose(0, 1), fill_value).transpose(0, 1)
+
+
+def diagonals_to_columns(tensor: torch.Tensor) -> torch.Tensor:
+    """Rearrange a tensor so that diagonals become columns. Values on diagonals that are shorter
+    than the columns are dropped.
+
+    The rows and columns are the first two dimensions, respectively; the remaining dimensions are
+    left untouched.
+    """
+    num_rows, num_cols = tensor.shape[:2]
+    num_cols -= num_rows - 1
+    tensor = tensor.reshape(-1, *tensor.shape[2:])
+    tensor = F.pad(tensor, (*((0,) * 2 * (tensor.ndim - 1)), 0, num_rows))
+    tensor = tensor.reshape(num_rows, num_cols + num_rows, *tensor.shape[1:])
+    tensor = tensor[:, :num_cols]
+    return tensor
