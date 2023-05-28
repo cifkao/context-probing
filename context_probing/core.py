@@ -140,7 +140,7 @@ def run_probing(
 
 
 @torch.inference_mode()
-def get_diff_importance_scores(
+def get_delta_scores(
     scores: torch.Tensor, normalize: bool = False, nan_to_zero: bool = True
 ) -> torch.Tensor:
     num_tokens = scores.size(1)
