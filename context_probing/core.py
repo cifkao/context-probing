@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, List, Optional
 import numpy as np
 import torch
 import torch.nn.functional as F
+from transformers import PreTrainedTokenizerBase
 from transformers.modeling_outputs import CausalLMOutput
 
 from .utils import (
@@ -86,12 +87,19 @@ METRIC_FUNCTIONS = {
 def run_probing(
     model: Callable[..., CausalLMOutput],
     inputs: Dict[str, Any],
-    window_len: int,
+    window_len: Optional[int] = None,
     metrics: Optional[List[str]] = None,
-    eos_id: int = 0,
+    tokenizer: Optional[PreTrainedTokenizerBase] = None,
+    eos_id: Optional[int] = None,
 ) -> Dict[str, torch.Tensor]:
-    if not metrics:
+    if metrics is None:
         metrics = ["kl_div", "xent"]
+
+    if eos_id is None:
+        if tokenizer is not None:
+            eos_id = tokenizer.eos_token_id
+        else:
+            eos_id = 0
 
     if len(inputs["input_ids"]) < 1 or not isinstance(
         inputs["input_ids"][0], (list, torch.Tensor)
@@ -104,6 +112,11 @@ def run_probing(
     else:
         label_ids = list(input_ids)[1:] + [eos_id]
 
+    if window_len is None:
+        if tokenizer is None:
+            window_len = np.inf
+        else:
+            window_len = tokenizer.model_max_length
     window_len = min(window_len, len(input_ids))
     inputs_sliding = get_windows(
         inputs, window_len=window_len, pad_id=eos_id, return_tensors="pt"
@@ -115,7 +128,7 @@ def run_probing(
     )
     num_tokens = logprobs.shape[0]
 
-    logprobs = logprobs.permute(1, 0, 2)
+    logprobs = logprobs.transpose(0, 1)
     logprobs = columns_to_diagonals(logprobs)
     logprobs = logprobs[:, :num_tokens]
 
