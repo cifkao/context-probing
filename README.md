@@ -56,7 +56,7 @@ print(scores)
 ```
 The first dimension of each scores tensor corresponds to context length (from 1 up to the total number of tokens), the second dimension to the _target_ token position, starting with the second token ("heard") and ending with the end-of-sequence token ("<|endoftext|>").
 
-You can limit the maximum context length (and hence save computation time and space) by setting the `window_len` parameter below the number of input tokens. Otherwise `window_len` will be set so that it doesn't exceed the number of the input tokens or the maximum input length allowed by the model.
+You can limit the maximum context length (and hence save computation time and space) by setting the `window_len` parameter to less than the number of input tokens. Otherwise `window_len` will automatically be set so that it doesn't exceed the number of the input tokens or the maximum input length allowed by the model.
 
 To obtain the differential importance scores:
 ```python
