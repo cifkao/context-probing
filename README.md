@@ -58,11 +58,17 @@ The first dimension of each scores tensor corresponds to context length (from 1 
 
 You can limit the maximum context length (and hence save computation time and space) by setting the `window_len` parameter below the number of input tokens. Otherwise `window_len` will be set so that it doesn't exceed the number of the input tokens or the maximum input length allowed by the model.
 
-To obtain and plot the differential importance scores:
+To obtain the differential importance scores:
 ```python
-from context_probing import get_diff_importance_scores, ids_to_readable_tokens
+from context_probing import get_diff_importance_scores
 
 imp_scores = get_diff_importance_scores(scores["kl_div"], normalize=True, nan_to_zero=False)
+```
+The first dimension corresponds to the target tokens, the second one to the context tokens.
+```
+from context_probing import ids_to_readable_tokens
+import matplotlib.pyplot as plt
+
 tokens = ids_to_readable_tokens(tokenizer, inputs["input_ids"] + [tokenizer.eos_token_id])
 plt.imshow(imp_scores, cmap="RdYlGn", vmin=-1., vmax=1.)
 plt.colorbar(shrink=0.8)
