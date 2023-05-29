@@ -103,7 +103,9 @@ def get_shard_sizes(dataset, total_shards):
     ]
 
 
-def ids_to_readable_tokens(tokenizer, ids, strip_whitespace=True):
+def ids_to_readable_tokens(
+    tokenizer, ids, strip_whitespace=True, bad_token_replacement=BAD_CHAR
+):
     cur_ids = []
     result = []
     for idx in ids:
@@ -115,7 +117,7 @@ def ids_to_readable_tokens(tokenizer, ids, strip_whitespace=True):
             result.append(decoded)
             del cur_ids[:]
         else:
-            result.append("")
+            result.append(bad_token_replacement)
     return result
 
 
