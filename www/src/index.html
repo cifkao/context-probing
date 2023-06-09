@@ -1,69 +1,87 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Black-box LM explanation by context length probing</title>
-    <link rel="stylesheet" href="style.scss" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css" integrity="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY=" crossorigin="anonymous">
-  </head>
-  <body>
-    <div class="container py-4">
-      <div class="header mb-4 bg-light">
-        <h1 class="text-center fw-bold mb-3">Black-box language model explanation by context length probing</h1>
-        <ul class="list-unstyled text-center mb-3">
-          <li><ul class="authors fw-bold list-inline"><li class="list-inline-item"><a href="https://ondrej.cifka.com">Ondřej Cífka</a></li><li class="list-inline-item"><a href="https://scholar.google.fr/citations?user=0s7V4FAAAAAJ">Antoine Liutkus</a></li></ul></li>
-          <li><a href="https://www.lirmm.fr/teams-en/zenith-en/">Zenith Team</a>, <a href="https://www.lirmm.fr/">LIRMM</a>, CNRS UMR 5506</li>
-          <li><a href="https://www.inria.fr/">Inria</a>, <a href="https://www.umontpellier.fr/">Université de Montpellier</a>, France</li>
-        </ul>
-        <ul class="buttons list-inline text-center mb-3">
-          <li class="list-inline-item"><a href="https://arxiv.org/abs/2212.14815" class="btn btn-outline-primary"><i class="fa fa-file-text"></i> Paper</a></li>
-          <li class="list-inline-item"><a href="https://github.com/cifkao/context-probing" class="btn btn-outline-primary"><i class="fa fa-code"></i> Code</a></li>
-          <li class="list-inline-item"><a href="#demo" class="btn btn-outline-primary"><i class="fa fa-mouse-pointer"></i> Demo</a></li>
-        </ul>
-        <p class="small"><strong class="me-1">Abstract.</strong> The increasingly widespread adoption of large
-          language models has highlighted the need for improving their explainability.
-          We present <strong>context length probing</strong>, a novel explanation technique for causal language models, based on tracking the predictions of a model as a function of the length of available context, and
-          allowing to assign <strong>differential importance scores</strong> to different contexts.
-          The technique is model-agnostic and does not rely on access to model internals beyond computing token-level probabilities.
-          We apply context length probing to large pre-trained language models and offer some initial analyses and insights, including the potential for studying long-range dependencies.
-        </p>
-      </div>
-      <h2 id="demo">Demos</h2>
-      <p>We provide two demos: a <a href="#static-demo">static one</a> with the models and the dataset from the paper,
-         and an <a href="#interactive-demo">interactive one</a> (a <a href="https://huggingface.co/spaces/cifkao/context-probing">🤗 Space</a>) for trying out some smaller models
-         on arbitrary inputs.
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Black-box LM explanation by context length probing</title>
+  <link rel="stylesheet" href="style.scss" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/fork-awesome@1.2.0/css/fork-awesome.min.css"
+    integrity="sha256-XoaMnoYC5TH6/+ihMEnospgm0J1PM/nioxbOUdnM8HY=" crossorigin="anonymous">
+</head>
+
+<body>
+  <div class="container py-4">
+    <div class="header mb-4 bg-light">
+      <h1 class="text-center fw-bold mb-3">Black-box language model explanation by context length probing</h1>
+      <ul class="list-unstyled text-center mb-3">
+        <li>
+          <ul class="authors fw-bold list-inline">
+            <li class="list-inline-item"><a href="https://ondrej.cifka.com">Ondřej Cífka</a></li>
+            <li class="list-inline-item"><a href="https://scholar.google.fr/citations?user=0s7V4FAAAAAJ">Antoine
+                Liutkus</a></li>
+          </ul>
+        </li>
+        <li><a href="https://www.lirmm.fr/teams-en/zenith-en/">Zenith Team</a>, <a
+            href="https://www.lirmm.fr/">LIRMM</a>, CNRS UMR 5506</li>
+        <li><a href="https://www.inria.fr/">Inria</a>, <a href="https://www.umontpellier.fr/">Université de
+            Montpellier</a>, France</li>
+      </ul>
+      <ul class="buttons list-inline text-center mb-3">
+        <li class="list-inline-item"><a href="https://arxiv.org/abs/2212.14815" class="btn btn-outline-primary"><i
+              class="fa fa-file-text"></i> Paper</a></li>
+        <li class="list-inline-item"><a href="https://github.com/cifkao/context-probing"
+            class="btn btn-outline-primary"><i class="fa fa-code"></i> Code</a></li>
+        <li class="list-inline-item"><a href="#demo" class="btn btn-outline-primary"><i class="fa fa-mouse-pointer"></i>
+            Demo</a></li>
+      </ul>
+      <p class="small"><strong class="me-1">Abstract.</strong> The increasingly widespread adoption of large
+        language models has highlighted the need for improving their explainability.
+        We present <strong>context length probing</strong>, a novel explanation technique for causal language models,
+        based on tracking the predictions of a model as a function of the length of available context, and
+        allowing to assign <strong>differential importance scores</strong> to different contexts.
+        The technique is model-agnostic and does not rely on access to model internals beyond computing token-level
+        probabilities.
+        We apply context length probing to large pre-trained language models and offer some initial analyses and
+        insights, including the potential for studying long-range dependencies.
       </p>
-      <div id="static-demo">
-        <h3>Static</h3>
-        <p>Hover over a token to see the left-hand context highlighted according to importance scores.
-          The score expresses the reduction in the selected metric
-          (green: decrease, red: increase) caused by adding a given token to the context.
-          Click a token to pin it, then try hovering over the context to see the corresponding top 5 predictions for the pinned token
-          (enable <mark class="bg-light rounded-2">Show top predictions</mark> first).
-          Click anywhere to unpin the token.</p>
-        <div id="app" class="mt-4 mb-4">
-          <div class="card"><div class="card-header">Loading…</div></div>
-        </div>
-        <p>
-          The text is from the
-          <a href="https://universaldependencies.org/treebanks/en_lines/index.html" target="_blank">UD_English_LinES</a>
-          treebank from Universal Dependencies,
-          distributed under the
-          <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a>
-          license.
-        </p>
-      </div>
-      <div id="interactive-demo">
-        <h3>Interactive</h3>
-        <iframe
-          src="https://cifkao-context-probing.hf.space?embed=true&compact=true&__theme=light#lighttheme"
-          frameborder="0"
-          width="850"
-          height="900"
-        ></iframe>
-      </div>
     </div>
-    <script type="module" src="index.tsx"></script>
-  </body>
+    <h2 id="demo">Demos</h2>
+    <p>We provide two demos: a <a href="#static-demo">static one</a> with the models and the dataset from the paper,
+      and an <a href="#interactive-demo">interactive one</a> (a <a
+        href="https://huggingface.co/spaces/cifkao/context-probing">🤗 Space</a>) for trying out some smaller models
+      on arbitrary inputs.
+    </p>
+    <div id="static-demo">
+      <h3>Static</h3>
+      <p>Hover over a token to see the left-hand context highlighted according to importance scores.
+        The score expresses the reduction in the selected metric
+        (green: decrease, red: increase) caused by adding a given token to the context.
+        Click a token to pin it, then try hovering over the context to see the corresponding top 5 predictions for the
+        pinned token
+        (enable <mark class="bg-light rounded-2">Show top predictions</mark> first).
+        Click anywhere to unpin the token.</p>
+      <div id="app" class="mt-4 mb-4">
+        <div class="card">
+          <div class="card-header">Loading…</div>
+        </div>
+      </div>
+      <p>
+        The text is from the
+        <a href="https://universaldependencies.org/treebanks/en_lines/index.html" target="_blank">UD_English_LinES</a>
+        treebank from Universal Dependencies,
+        distributed under the
+        <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" target="_blank">CC BY-NC-SA 4.0</a>
+        license.
+      </p>
+    </div>
+    <div id="interactive-demo">
+      <h3>Interactive</h3>
+      <iframe src="https://cifkao-context-probing.hf.space?embed=true&compact=true&__theme=light#lighttheme"
+        frameborder="0" width="850" style="display: block; margin: 0 auto;" class="demo-iframe"></iframe>
+    </div>
+  </div>
+  <script type="module" src="index.tsx"></script>
+</body>
+
 </html>

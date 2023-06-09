@@ -68,6 +68,7 @@ a:not(:hover) {
     15% {
         text-shadow: 0 0 7px #ffcc00;
     }
+
     85% {
         text-shadow: 0 0 7px #ffcc00;
     }
@@ -90,7 +91,8 @@ a:not(:hover) {
         .token {
             opacity: 0.75;
 
-            &.context, &.active {
+            &.context,
+            &.active {
                 opacity: 1;
             }
 
@@ -109,7 +111,10 @@ a:not(:hover) {
         cursor: wait;
 
         .token {
-            &, &.context, &.active {
+
+            &,
+            &.context,
+            &.active {
                 outline: none;
                 text-decoration: none;
                 opacity: 1;
@@ -122,6 +127,7 @@ a:not(:hover) {
     0% {
         background-position: 125% 0;
     }
+
     100% {
         background-position: -200% 0;
     }
@@ -143,8 +149,13 @@ a:not(:hover) {
     }
 }
 
+.demo-iframe {
+    width: 1px;
+    min-width: 100%;
+}
+
 /* Copied from Boostrap, not sure why I need to do this */
-.form-floating > .form-select ~ label {
+.form-floating>.form-select~label {
     opacity: .65;
     transform: scale(.85)translateY(-.5rem)translateX(.15rem);
 }

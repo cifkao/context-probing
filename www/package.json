@@ -21,6 +21,7 @@
   "dependencies": {
     "@types/ndarray": "^1.0.11",
     "bootstrap": "^5.2.0",
+    "iframe-resizer": "^4.3.6",
     "ndarray": "^1.0.19",
     "ndarray-unpack": "^1.0.0",
     "npyjs": "^0.4.0",
