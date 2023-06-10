@@ -30,6 +30,8 @@ Citation:
 
 Install the package with with `pip install -e .`, or better (to install exact dependency versions from the lockfile), `pip install poetry && poetry install`.
 
+### Running context length probing
+
 The `context_probing` package provides functions to use our method with 🤗 Transformers with a few lines of code:
 ```python
 from context_probing import run_probing
@@ -43,21 +45,24 @@ scores = run_probing(inputs=inputs, model=model, tokenizer=tokenizer)
 print(scores)
 ```
 ```python
-{'kl_div': tensor([[0.0, 1.2, 1.4,  ..., 7.5, 1.8, 2.5],
-                   [nan, 0.0, 0.6,  ..., 3.4, 1.3, 2.2],
-                   [nan, nan, 0.0,  ..., 2.7, 2.0, 1.2],
+{'kl_div': tensor([[nan, nan, nan, ..., nan, nan, nan],
+                   [0.0, 1.2, 1.4, ..., 7.5, 1.8, 2.5],
+                   [nan, 0.0, 0.6, ..., 3.4, 1.3, 2.2],
+                   [nan, nan, 0.0, ..., 2.7, 2.0, 1.2],
                    ...,
                    [nan, nan, nan,  ..., nan, nan, 0.0]], dtype=torch.float16),
- 'xent': tensor([[8.9, 4.7, 12.1, ..., 7.5, 3.2, 4.8],
+ 'xent': tensor([[nan, nan, nan,  ..., nan, nan, nan],
+                 [8.9, 4.7, 12.1, ..., 7.5, 3.2, 4.8],
                  [nan, 4.0, 11.3, ..., 3.4, 2.7, 5.1],
                  [nan, nan, 10.7, ..., 2.7, 3.5, 4.3],
                  ...,
                  [nan, nan,  nan, ..., nan, nan, 8.2]], dtype=torch.float16)}
 ```
-The first dimension of each scores tensor corresponds to context length (from 1 up to the total number of tokens), the second dimension to the _target_ token position, starting with the second token ("heard") and ending with the end-of-sequence token ("<|endoftext|>").
+The first dimension of each scores tensor corresponds to context length (from 0 up to the total number of tokens), the second dimension to the _target_ token position, starting with the second token ("heard") and ending with the end-of-sequence token ("<|endoftext|>"). Notice that the values are `nan` for context length 0; see [below](#estimating-unigram-probabilities) for how to estimate the metrics for context length 0.
 
 You can limit the maximum context length (and hence save computation time and space) by setting the `window_len` parameter to less than the number of input tokens. Otherwise `window_len` will automatically be set so that it doesn't exceed the number of tokens or the maximum input length allowed by the model.
 
+### Differential importance scores
 To obtain the differential importance scores:
 ```python
 from context_probing import get_delta_scores
@@ -78,6 +83,21 @@ plt.xlabel("Context token")
 plt.ylabel("Target token")
 ```
 ![](https://raw.githubusercontent.com/cifkao/context-probing/assets/imp_score_imshow.png)
+
+### Context length 0
+A neural language model normally cannot output unigram probabilities (with context length 0) as it is always conditioned on some input. Consequently, we cannot easily compute the importance score for the token immediately preceding the target token (i.e. context length 1) – that is, unless we _know_ the unigram probabilities (e.g. if we have access to the language model's training data). If we do, we can pass them to `run_probing()` via the `unigram_logprobs` parameter.
+
+If the unigram probabilities are not known, we can estimate them using the `estimate_unigram_logprobs()` function, e.g.: 
+```python
+from context_probing import estimate_unigram_logprobs
+
+unigram_logprobs = estimate_unigram_logprobs(model=model, tokenizer=tokenizer)
+scores = run_probing(inputs=inputs, model=model, tokenizer=tokenizer, unigram_logprobs=unigram_logprobs)
+imp_scores = get_delta_scores(scores["kl_div"], normalize=True, nan_to_zero=False)
+...
+```
+Notice that the importance score matrix now has the diagonal filled in, which corresponds to the immediately preceding tokens:
+![](https://raw.githubusercontent.com/cifkao/context-probing/assets/imp_score_unigram_imshow.png)
 
 ### Scripts and notebooks
 
