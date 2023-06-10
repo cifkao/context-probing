@@ -58,7 +58,7 @@ print(scores)
                  ...,
                  [nan, nan,  nan, ..., nan, nan, 8.2]], dtype=torch.float16)}
 ```
-The first dimension of each scores tensor corresponds to context length (from 0 up to the total number of tokens), the second dimension to the _target_ token position, starting with the second token ("heard") and ending with the end-of-sequence token ("<|endoftext|>"). Notice that the values are `nan` for context length 0; see [below](#estimating-unigram-probabilities) for how to estimate the metrics for context length 0.
+The first dimension of each scores tensor corresponds to context length (from 0 up to the total number of tokens), the second dimension to the _target_ token position, starting with the second token ("heard") and ending with the end-of-sequence token ("<|endoftext|>"). Notice that the values are `nan` for context length 0; see [below](#null-context) for how to estimate the metrics for context length 0.
 
 You can limit the maximum context length (and hence save computation time and space) by setting the `window_len` parameter to less than the number of input tokens. Otherwise `window_len` will automatically be set so that it doesn't exceed the number of tokens or the maximum input length allowed by the model.
 
@@ -84,8 +84,8 @@ plt.ylabel("Target token")
 ```
 ![](https://raw.githubusercontent.com/cifkao/context-probing/assets/imp_score_imshow.png)
 
-### Context length 0
-A neural language model normally cannot output unigram probabilities (with context length 0) as it is always conditioned on some input. Consequently, we cannot easily compute the importance score for the token immediately preceding the target token (i.e. context length 1) – that is, unless we _know_ the unigram probabilities (e.g. if we have access to the language model's training data). If we do, we can pass them to `run_probing()` via the `unigram_logprobs` parameter.
+### Null context
+A neural language model normally cannot output unigram probabilities (i.e. with context length 0) as it is always conditioned on some input. Consequently, we cannot easily compute the importance score for the token immediately preceding the target token (i.e. context length 1) – that is, unless we _know_ the unigram probabilities (e.g. if we have access to the language model's training data). If we do, we can pass them to `run_probing()` via the `unigram_logprobs` parameter.
 
 If the unigram probabilities are not known, we can estimate them using the `estimate_unigram_logprobs()` function, e.g.: 
 ```python
