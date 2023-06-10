@@ -96,7 +96,7 @@ scores = run_probing(inputs=inputs, model=model, tokenizer=tokenizer, unigram_lo
 imp_scores = get_delta_scores(scores["kl_div"], normalize=True, nan_to_zero=False)
 ...
 ```
-Notice that the importance score matrix now has the diagonal filled in, which corresponds to the immediately preceding tokens:
+Notice that the importance score matrix now has the diagonal (corresponding to the immediately preceding tokens) filled in:  
 ![](https://raw.githubusercontent.com/cifkao/context-probing/assets/imp_score_unigram_imshow.png)
 
 ### Scripts and notebooks
