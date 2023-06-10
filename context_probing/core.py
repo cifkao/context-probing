@@ -17,7 +17,7 @@ from .utils import (
 def get_logprobs(
     model: Callable[..., CausalLMOutput],
     inputs: Dict[str, Any],
-    label_probs: bool = False,
+    labels_only: bool = False,
     batch_size: int = 8,
 ) -> torch.Tensor:
     logprobs = []
@@ -25,7 +25,7 @@ def get_logprobs(
     for i in range(0, num_items, batch_size):
         batch = {k: v[i : i + batch_size] for k, v in inputs.items()}
         batch_logprobs = model(**batch).logits.log_softmax(dim=-1).to(torch.float16)
-        if label_probs:
+        if labels_only:
             batch_logprobs = torch.gather(
                 batch_logprobs, dim=-1, index=batch["labels"][..., None]
             )
@@ -51,7 +51,7 @@ def kl_div_score(
         logprobs = logprobs.clone()
 
     log_p = logprobs[
-        torch.arange(logprobs.shape[1]).clamp(max=logprobs.shape[0] - 1),
+        torch.arange(1, logprobs.shape[1] + 1).clamp(max=logprobs.shape[0]),
         torch.arange(logprobs.shape[1]),
     ]
     # Compute things in place as much as possible
@@ -91,9 +91,12 @@ def run_probing(
     metrics: Optional[List[str]] = None,
     tokenizer: Optional[PreTrainedTokenizerBase] = None,
     eos_id: Optional[int] = None,
+    unigram_logprobs: Optional[torch.Tensor] = None,
 ) -> Dict[str, torch.Tensor]:
     if metrics is None:
         metrics = ["kl_div", "xent"]
+    # If only cross entropy is requested, only store the log-probabilities of the labels
+    labels_only = all(m in ["xent", "nll"] for m in metrics)
 
     if eos_id is None:
         if tokenizer is not None:
@@ -124,13 +127,23 @@ def run_probing(
     logprobs = get_logprobs(
         model=model,
         inputs=inputs_sliding,
-        label_probs=all(m in ["xent", "nll"] for m in metrics),
+        labels_only=labels_only,
     )
     num_tokens = logprobs.shape[0]
 
     logprobs = logprobs.transpose(0, 1)
     logprobs = columns_to_diagonals(logprobs)
     logprobs = logprobs[:, :num_tokens]
+
+    if unigram_logprobs is not None:
+        unigram_logprobs[~torch.isfinite(unigram_logprobs)] = torch.nan
+        if labels_only:
+            unigram_logprobs = unigram_logprobs[label_ids].unsqueeze(-1)
+        else:
+            unigram_logprobs = unigram_logprobs.unsqueeze(0).repeat(num_tokens, 1)
+    else:
+        unigram_logprobs = torch.full_like(logprobs[0], torch.nan)
+    logprobs = torch.cat([unigram_logprobs.unsqueeze(0), logprobs], dim=0)
 
     scores = {}
     for key in metrics:
@@ -145,13 +158,12 @@ def get_delta_scores(
 ) -> torch.Tensor:
     num_tokens = scores.size(1)
 
-    scores = F.pad(scores, (0, scores.size(0) - 1), value=torch.nan)
+    scores = F.pad(scores, (1, scores.size(0) - 1), value=torch.nan)
     scores = diagonals_to_columns(scores)
     scores = rows_to_diagonals(scores)
-    scores = scores[:num_tokens]
+    scores = scores[1 : num_tokens + 1]
 
     scores = (-scores).flip(1).diff(1).flip(1)
-    scores = F.pad(scores, (0, 1), value=torch.nan)
 
     if nan_to_zero:
         scores = scores.nan_to_num()
