@@ -20,9 +20,9 @@ def estimate_unigram_logprobs(
 ) -> torch.Tensor:
     """Estimate the marginal log-probability of each token in the vocabulary.
 
-    This is done by starting with a uniform distribution (or the one given by initial_probs) and
-    iteratively re-estimating the probabilities by marginalizing over the previous token (according
-    to the bigram distribution given by the model).
+    This is done by considering the Markov chain given by the bigram distribution and finding a
+    stationary distribution using power iteration, starting from the distribution given by
+    `initial_probs`.
 
     Args:
         model: A causal language model to use for estimating the probabilities.
@@ -41,7 +41,7 @@ def estimate_unigram_logprobs(
     with torch.no_grad():
         bigram_probs = get_bigram_logits(
             model, tokenizer, model_device=model_device, batch_size=batch_size
-        ).softmax(1).transpose(0, 1)
+        ).softmax(1)
 
         if initial_probs is None:
             unigram_probs = torch.ones(tokenizer.vocab_size, device=bigram_probs.device)
@@ -51,8 +51,7 @@ def estimate_unigram_logprobs(
 
         # Iteratively recompute the unigram probabilities until convergence
         for step in range(max_steps):
-            # p(w) = sum_v p(w | v) p(v)
-            new_unigram_probs = bigram_probs @ unigram_probs
+            new_unigram_probs = unigram_probs @ bigram_probs
             new_unigram_probs /= new_unigram_probs.sum()
             change = (new_unigram_probs.log() - unigram_probs.log()).nan_to_num().abs().max().item()
             logger.debug("Step %d: max(abs(diff(log(prob)))) = %f", step, change)
