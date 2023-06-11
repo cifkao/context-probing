@@ -59,6 +59,8 @@ def estimate_unigram_logprobs(
                 break
             unigram_probs = new_unigram_probs
 
+        logger.info("Finished after %d steps, last logprob change %f", step + 1, change)
+
         return unigram_probs.log()
 
 
