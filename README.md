@@ -85,7 +85,7 @@ plt.ylabel("Target token")
 ![](https://raw.githubusercontent.com/cifkao/context-probing/assets/imp_score_imshow.png)
 
 ### Null context
-A neural language model normally cannot output unigram probabilities (i.e. with context length 0) as it is always conditioned on some input. Consequently, we cannot easily compute the importance score for the token immediately preceding the target token (i.e. context length 1) – that is, unless we _know_ the unigram probabilities (e.g. if we have access to the language model's training data). If we do, we can pass them to `run_probing()` via the `unigram_logprobs` parameter.
+A neural language model normally cannot output unigram probabilities (i.e. with context length 0) as it is always conditioned on some input. Consequently, we cannot easily compute the importance score for the token immediately preceding the target token (i.e. context length 1). However, if we _know_ the unigram probabilities (e.g. if we have access to the language model's training data), we can pass them to `run_probing()` via the `unigram_logprobs` parameter in order to enable it to compute the metrics for a null context.
 
 If the unigram probabilities are not known, we can estimate them using the `estimate_unigram_logprobs()` function, e.g.: 
 ```python
