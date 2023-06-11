@@ -136,6 +136,7 @@ def run_probing(
     logprobs = logprobs[:, :num_tokens]
 
     if unigram_logprobs is not None:
+        unigram_logprobs = unigram_logprobs.clone()
         unigram_logprobs[~torch.isfinite(unigram_logprobs)] = torch.nan
         if labels_only:
             unigram_logprobs = unigram_logprobs[label_ids].unsqueeze(-1)
