@@ -51,7 +51,7 @@ def kl_div_score(
         logprobs = logprobs.clone()
 
     log_p = logprobs[
-        torch.arange(1, logprobs.shape[1] + 1).clamp(max=logprobs.shape[0]),
+        torch.arange(1, logprobs.shape[1] + 1).clamp(max=logprobs.shape[0] - 1),
         torch.arange(logprobs.shape[1]),
     ]
     # Compute things in place as much as possible
