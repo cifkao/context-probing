@@ -1,10 +1,10 @@
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Union
 
 import numpy as np
 import torch
 import torch.nn.functional as F
 from transformers import PreTrainedTokenizerBase
-from transformers.modeling_outputs import CausalLMOutput
+from transformers.modeling_outputs import ModelOutput
 
 from .utils import (
     columns_to_diagonals,
@@ -15,7 +15,7 @@ from .utils import (
 
 
 def get_logprobs(
-    model: Callable[..., CausalLMOutput],
+    model: Callable[..., Union[ModelOutput, torch.Tensor]],
     inputs: Dict[str, Any],
     labels_only: bool = False,
     batch_size: int = 8,
@@ -24,7 +24,12 @@ def get_logprobs(
     num_items = len(inputs["input_ids"])
     for i in range(0, num_items, batch_size):
         batch = {k: v[i : i + batch_size] for k, v in inputs.items()}
-        batch_logprobs = model(**batch).logits.log_softmax(dim=-1).to(torch.float16)
+        batch_output = model(**batch)
+        if isinstance(batch_output, torch.Tensor):
+            batch_logits = batch_output
+        else:
+            batch_logits = batch_output.logits
+        batch_logprobs = batch_logits.log_softmax(dim=-1).to(torch.float16)
         if labels_only:
             batch_logprobs = torch.gather(
                 batch_logprobs, dim=-1, index=batch["labels"][..., None]
@@ -85,14 +90,45 @@ METRIC_FUNCTIONS = {
 
 @torch.inference_mode()
 def run_probing(
-    model: Callable[..., CausalLMOutput],
+    model: Callable[..., Union[ModelOutput, torch.Tensor]],
     inputs: Dict[str, Any],
     window_len: Optional[int] = None,
     metrics: Optional[List[str]] = None,
     tokenizer: Optional[PreTrainedTokenizerBase] = None,
     eos_id: Optional[int] = None,
     unigram_logprobs: Optional[torch.Tensor] = None,
+    batch_size: int = 8,
 ) -> Dict[str, torch.Tensor]:
+    """Run context length probing with the given model and inputs.
+
+    Args:
+        model: A pretrained PyTorch Hugging Face Transformers causal language model, or a callable
+            accepting as parameters PyTorch tensors corresponding to a batch of values from
+            `inputs` and returning a either a `ModelOutput` with a `logits` attribute or a logits
+            PyTorch tensor.
+        inputs: A dictionary of inputs to the model, containing at least the key "input_ids". If no
+            "labels" key is present, the labels are assumed to be the same as the inputs shifted by
+            one and padded with the EOS token. The labels are only useful for computing the "xent"
+            ("nll") metric.
+        window_len: The maximum length of the context window to consider. If not specified, it will
+            be set so that the entire input sequence is considered, without exceeding the maximum
+            input length supported by the model.
+        metrics: A list of metrics to compute. The available metrics are "kl_div" and "xent" (or
+            "nll", which is an alias for "xent"). If not specified, both metrics will be computed.
+            Computing only "xent" or "nll" is more memory-efficient.
+        tokenizer: A tokenizer for the model. Used only to determine the maximum supported input
+            length and the EOS token ID.
+        eos_id: The ID of the EOS token. If not specified, it will be determined from the tokenizer
+            or set to 0.
+        unigram_logprobs: A tensor of unigram (null-context) log-probabilities for all tokens in
+            the vocabulary. If not given, they will be set to NaN.
+        batch_size: The batch size to use for model inference.
+
+    Returns:
+        A dictionary mapping the name of each metric to its values as a PyTorch tensor of shape
+        `(window_len + 1, len(inputs["input_ids"]))`. The first dimension corresponds to context
+        length (starting from 0) and the second to target token position.
+    """
     if metrics is None:
         metrics = ["kl_div", "xent"]
     # If only cross entropy is requested, only store the log-probabilities of the labels
@@ -112,6 +148,7 @@ def run_probing(
     [input_ids] = inputs["input_ids"]
     if "labels" in inputs:
         [label_ids] = inputs["labels"]
+        inputs = {k: v for k, v in inputs.items() if k != "labels"}
     else:
         label_ids = list(input_ids)[1:] + [eos_id]
 
@@ -128,6 +165,7 @@ def run_probing(
         model=model,
         inputs=inputs_sliding,
         labels_only=labels_only,
+        batch_size=batch_size
     )
     num_tokens = logprobs.shape[0]
 
@@ -155,20 +193,33 @@ def run_probing(
 
 @torch.inference_mode()
 def get_delta_scores(
-    scores: torch.Tensor, normalize: bool = False, nan_to_zero: bool = True
+    metric: torch.Tensor, normalize: bool = False, nan_to_zero: bool = True
 ) -> torch.Tensor:
-    num_tokens = scores.size(1)
+    """Compute differential importance scores from the metrics returned by `run_probing()`.
 
-    scores = F.pad(scores, (1, scores.size(0) - 1), value=torch.nan)
-    scores = diagonals_to_columns(scores)
-    scores = rows_to_diagonals(scores)
-    scores = scores[1 : num_tokens + 1]
+    Args:
+        metric: One of the metric tensors returned by `run_probing()`.
+        normalize: Whether to normalize the scores to the range [-1, 1].
+        nan_to_zero: Whether to replace non-finite values with zeros.
 
-    scores = (-scores).flip(1).diff(1).flip(1)
+    Returns:
+        A `scores` tensor of shape `(metric.size(1), metric.size(1))` where `scores[i, j]` is
+        the differential importance score of the `j`-th context token for the `i + 1`-st target
+        token (starting from 0).
+    """
+    num_tokens = metric.size(1)
 
+    metric = F.pad(metric, (1, metric.size(0) - 1), value=torch.nan)
+    metric = diagonals_to_columns(metric)
+    metric = rows_to_diagonals(metric)
+    metric = metric[1 : num_tokens + 1]
+
+    scores = (-metric).flip(1).diff(1).flip(1)
+
+    scores_finite = scores.nan_to_num(nan=0., posinf=0., neginf=0.)
     if nan_to_zero:
-        scores = scores.nan_to_num()
+        scores = scores_finite
     if normalize:
         eps = torch.finfo(scores.dtype).eps
-        scores /= scores.nan_to_num().abs().max(dim=1, keepdim=True).values + eps
+        scores /= scores_finite.abs().max(dim=1, keepdim=True).values + eps
     return scores
