@@ -1,6 +1,6 @@
 # Context length probing
 
-This is the source code repository for the ACL 2023 short paper [*Black-box language model explanation by context length probing*](https://arxiv.org/abs/2212.14815) by Ondřej Cífka and Antoine Liutkus.
+This is the source code repository for the ACL 2023 short paper [*Black-box language model explanation by context length probing*](https://aclanthology.org/2023.acl-short.92/) by Ondřej Cífka and Antoine Liutkus.
 
 ⚠️ When cloning the repo, use `--single-branch` to avoid fetching the demo data files.
 
