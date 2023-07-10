@@ -10,19 +10,6 @@ from transformers import BatchEncoding
 BAD_CHAR = chr(0xFFFD)
 
 
-def _get_windows_batched(examples, window_len, pad_id):
-    return {
-        k: [
-            t[i][j : j + window_len]
-            + [pad_id if k == "input_ids" else 0 if type(t[i][0]) == int else None]
-            * (j + window_len - len(t[i]))
-            for i in range(len(examples["input_ids"]))
-            for j in range(len(examples["input_ids"][i]) - 1)
-        ]
-        for k, t in examples.items()
-    }
-
-
 def get_windows(
     examples: Dict[str, Any],
     window_len: int,
@@ -66,7 +53,7 @@ def _add_seq_ids(example, idx):
     return example
 
 
-def get_data(
+def get_hf_data(
     path,
     pad_id=-1,
     window_len=None,
@@ -87,7 +74,7 @@ def get_data(
         dataset = dataset.map(_add_seq_ids, num_proc=num_proc, with_indices=True)
     if window_len is not None:
         dataset = dataset.map(
-            _get_windows_batched,
+            get_windows,
             fn_kwargs=dict(window_len=window_len, pad_id=pad_id),
             batched=True,
             batch_size=1,

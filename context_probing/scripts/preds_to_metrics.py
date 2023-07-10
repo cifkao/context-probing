@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from tqdm import tqdm
 import transformers
 
-from ..utils import get_data
+from ..utils import get_hf_data
 
 
 def _get_saved_shape(path):
@@ -67,7 +67,7 @@ def main():
         tokenizer.pad_token_id if tokenizer.pad_token_id is not None
         else tokenizer.eos_token_id
     )
-    dataset = get_data(
+    dataset = get_hf_data(
         args.data_path,
         window_len=window_len,
         pad_id=pad_id,

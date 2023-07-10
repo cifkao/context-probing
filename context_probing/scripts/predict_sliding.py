@@ -6,7 +6,7 @@ import datasets
 import numpy as np
 import transformers
 
-from ..utils import get_data, get_shard_sizes
+from ..utils import get_hf_data, get_shard_sizes
 
 
 def main():
@@ -32,7 +32,7 @@ def main():
 
     # Prepare the data
     tokenizer = transformers.AutoTokenizer.from_pretrained(args.model_path)
-    dataset = get_data(
+    dataset = get_hf_data(
         args.data_path,
         columns=["input_ids", "attention_mask"],
         window_len=args.window_len,
