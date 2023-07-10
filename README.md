@@ -7,7 +7,7 @@ This is the source code repository for the ACL 2023 short paper [*Black-box lang
 [![](https://raw.githubusercontent.com/cifkao/context-probing/assets/demo.gif)](https://cifkao.github.io/context-probing/)
 
 Links:  
-[📃 Pre-print](https://arxiv.org/abs/2212.14815)  
+[📃 Paper](https://aclanthology.org/2023.acl-short.92/)  
 [🕹️ Demo](https://cifkao.github.io/context-probing/#demo)  
 [🤗 Space](https://huggingface.co/spaces/cifkao/context-probing)   
 [📉 Computed metrics](https://doi.org/10.5281/zenodo.7513991)
