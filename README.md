@@ -14,15 +14,17 @@ Links:
 
 Citation:
 ```bibtex
-@inproceedings{cifka2022blackbox,
-  title={Black-box language model explanation by context length probing},
-  author={C{\'i}fka, Ond{\v{r}}ej and Liutkus, Antoine},
-  booktitle = "Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 2: Short Papers)",
-  note = "to appear",
-  month = july,
-  year = "2023",
-  address = "Toronto, Canada",
-  publisher = "Association for Computational Linguistics"
+@inproceedings{cifka-liutkus-2023-black,
+    title = "Black-box language model explanation by context length probing",
+    author = "C{\'\i}fka, Ond{\v{r}}ej  and
+      Liutkus, Antoine",
+    booktitle = "Proceedings of the 61st Annual Meeting of the Association for Computational Linguistics (Volume 2: Short Papers)",
+    month = jul,
+    year = "2023",
+    address = "Toronto, Canada",
+    publisher = "Association for Computational Linguistics",
+    url = "https://aclanthology.org/2023.acl-short.92",
+    pages = "1067--1079",
 }
 ```
 
