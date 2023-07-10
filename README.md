@@ -28,7 +28,9 @@ Citation:
 
 ## Usage
 
-Install the package with with `pip install -e .`, or better (to install exact dependency versions from the lockfile), `pip install poetry && poetry install`.
+To install the package, run `pip install context-probing`.
+
+If you wish to reproduce the experiments, you may want to install from `poetry.lock` to make sure you have the exact same versions of the dependencies: `pip install poetry && poetry install`.
 
 ### Running context length probing
 
