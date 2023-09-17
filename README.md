@@ -25,6 +25,7 @@ Citation:
     publisher = "Association for Computational Linguistics",
     url = "https://aclanthology.org/2023.acl-short.92",
     pages = "1067--1079",
+    doi = "10.18653/v1/2023.acl-short.92",
 }
 ```
 
